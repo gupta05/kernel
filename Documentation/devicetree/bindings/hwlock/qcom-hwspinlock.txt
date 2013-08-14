@@ -1,0 +1,35 @@
+Qualcomm Hardware Mutex Block:
+
+The hardware block provides mutexes utilized between different processors
+on the SoC as part of the communication protocol used by these processors.
+
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: must be one of:
+		    "qcom,sfpb-mutex",
+		    "qcom,tcsr-mutex"
+
+- reg:
+	Usage: required
+	Value type: <prop-encoded-array>
+	Definition: base address and size of the mutex registers
+
+- reg-names:
+	Usage: required
+	Value type: <string>
+	Definition: must be "mutex-base"
+
+- qcom,num-locks:
+	Usage: required
+	Value type: <u32>
+	Definition: the number of locks/mutex available in this block
+
+Example:
+
+	hwlock@fd484000 {
+		compatible = "qcom,tcsr-mutex";
+		reg = <0xfd484000 0x1000>;
+		reg-names = "mutex-base";
+		qcom,num-locks = <32>;
+	};
