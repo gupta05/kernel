@@ -1,0 +1,20 @@
+Qualcomm MSM Hardware Mutex Block:
+
+The hardware block provides mutexes utilized between different processors
+on the SoC as part of the communication protocol used by these processors.
+
+Required properties:
+- compatible: should be "qcom,tcsr-mutex"
+- reg: Should contain registers location and length of mutex registers
+- reg-names:
+	"mutex-base"  - string to identify mutex registers
+- qcom,num-locks: the number of locks/mutexes supported
+
+Example:
+
+	hwlock@fd484000 {
+		compatible = "qcom,tcsr-mutex";
+		reg = <0xfd484000 0x1000>;
+		reg-names = "mutex-base";
+		qcom,num-locks = <32>;
+	};
