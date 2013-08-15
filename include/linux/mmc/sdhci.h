@@ -104,6 +104,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_RDWR_TX_ACTIVE_EOT			(1<<7)
 /* Controller clears interrupt slowly and IRQ handler may be called twice */
 #define SDHCI_QUIRK2_SLOW_INT_CLR			(1<<8)
+/* Ignore CMD CRC errors for tuning commands */
+#define SDHCI_QUIRK2_IGNORE_CMDCRC_FOR_TUNING		(1<<9)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
