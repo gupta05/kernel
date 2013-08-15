@@ -2176,6 +2176,9 @@ static void sdhci_tasklet_finish(unsigned long param)
 		   controllers do not like that. */
 		sdhci_reset(host, SDHCI_RESET_CMD);
 		sdhci_reset(host, SDHCI_RESET_DATA);
+	} else {
+		if (host->quirks2 & SDHCI_QUIRK2_RDWR_TX_ACTIVE_EOT)
+			sdhci_reset(host, SDHCI_RESET_DATA);
 	}
 
 	host->mrq = NULL;
