@@ -102,6 +102,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_BROKEN_HS200			(1<<6)
 /* Controller cannot de-assert Read/Write Transfer Active after transaction */
 #define SDHCI_QUIRK2_RDWR_TX_ACTIVE_EOT			(1<<7)
+/* Controller clears interrupt slowly and IRQ handler may be called twice */
+#define SDHCI_QUIRK2_SLOW_INT_CLR			(1<<8)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
