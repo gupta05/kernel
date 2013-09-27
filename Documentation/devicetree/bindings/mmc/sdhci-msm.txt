@@ -1,0 +1,70 @@
+* Qualcomm SDHCI controller (sdhci-msm)
+
+This file documents differences between the core properties in mmc.txt
+and the properties used by the sdhci-msm driver.
+
+Required properties:
+- compatible: should contain "qcom,sdhci-msm"
+- reg: should contain SDHC, SD Core register map
+- reg-names: indicates various resources passed to driver (via reg proptery) by name
+	"reg-names" examples are "hc_mem" and "core_mem"
+- interrupts: should contain SDHC interrupts
+- interrupt-names: indicates interrupts passed to driver (via interrupts property) by name
+	"interrupt-names" examples are "hc_irq" and "pwr_irq"
+- vdd-supply: phandle to the regulator for the vdd (flash core voltage) supply.
+- vddio-supply: phandle to the regulator for the vdd-io (i/o voltage) supply.
+- pinctrl-names: Should contain only one value - "default".
+- pinctrl-0: Should specify pin control groups used for this controller.
+- clocks: A list of phandle + clock-specifier pairs for the clocks listed in clock-names
+- clock-names: Should contain the following:
+	"iface" - Main peripheral bus clock (PCLK/HCLK - AHB Bus clock) (required)
+	"core"	- SDC MMC clock (MCLK) (required)
+	"bus"	- SDCC bus voter clock (optional)
+
+Optional properties:
+- qcom,bus-speed-mode: specifies the supported bus speed modes by host
+	The supported bus speed modes are :
+	"HS200_1p8v" - indicates that host can support HS200 at 1.8v
+	"HS200_1p2v" - indicates that host can support HS200 at 1.2v
+	"DDR_1p8v" - indicates that host can support DDR mode at 1.8v
+	"DDR_1p2v" - indicates that host can support DDR mode at 1.2v
+
+- qcom,{vdd,vddio}-always-on - specifies whether the supply should be kept "on" always.
+- qcom,{vdd,vddio}-lpm-sup - specifies whether the supply can be kept in low power mode.
+- qcom,{vdd,vddio}-voltage-level - specifies voltage levels for the supply.
+	Should be specified in pairs (min, max), units uV.
+- qcom,{vdd,vddio}-current-level - specifies load levels for the supply in lpm
+	or high power mode (hpm). Should be specified in pairs (lpm, hpm), units uA.
+
+Example:
+
+	aliases {
+		sdhc1 = &sdhc_1;
+	};
+
+	sdhc_1: qcom,sdhc@f9824900 {
+		compatible = "qcom,sdhci-msm";
+		reg = <0xf9824900 0x11c>, <0xf9824000 0x800>;
+		reg-names = "hc_mem", "core_mem";
+		interrupts = <0 123 0>, <0 138 0>;
+		interrupt-names = "hc_irq", "pwr_irq";
+		bus-width = <4>;
+		non-removable;
+
+		vdd-supply = <&pm8941_l21>;
+		vddio-supply = <&pm8941_l13>;
+		qcom,vdd-voltage-level = <2950000 2950000>;
+		qcom,vdd-current-level = <9000 800000>;
+		qcom,vddio-always-on;
+		qcom,vddio-lpm-sup;
+		qcom,vddio-voltage-level = <1800000 2950000>;
+		qcom,vddio-current-level = <6 22000>;
+		qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+
+		pinctrl-names = "default"
+		pinctrl-0 = <&sdc1_clk &sdc1_cmd &sdc1_data>;
+
+		clocks = <&iface>, <&core>, <&bus>;
+		clock-names = "iface", "core", "bus";
+
+	};
