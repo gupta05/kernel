@@ -525,6 +525,15 @@ config VEXPRESS_SYSCFG
 	  bus. System Configuration interface is one of the possible means
 	  of generating transactions on this bus.
 
+config QPNP_REVID
+	tristate "QPNP Revision ID peripheral"
+	depends on SPMI
+	help
+	  Say 'y' here to include support for the Qualcomm QPNP REVID
+	  peripheral. REVID prints out the PMIC type and revision numbers
+	  in the kernel log along with the PMIC option status. The PMIC
+	  type is mapped to a Qualcomm chip part number and logged as well.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
