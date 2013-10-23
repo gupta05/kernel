@@ -89,6 +89,24 @@ void sdhci_get_of_property(struct platform_device *pdev)
 		if (of_get_property(np, "no-1-8-v", NULL))
 			host->quirks2 |= SDHCI_QUIRK2_NO_1_8_V;
 
+		if (of_get_property(np, "rdwr-tx-active-eot", NULL))
+			host->quirks2 |= SDHCI_QUIRK2_RDWR_TX_ACTIVE_EOT;
+
+		if (of_get_property(np, "slow-int-clr", NULL))
+			host->quirks2 |= SDHCI_QUIRK2_SLOW_INT_CLR;
+
+		if (of_get_property(np, "ignore-cmdcrc-for-tuning", NULL))
+			host->quirks2 |= SDHCI_QUIRK2_IGNORE_CMDCRC_FOR_TUNING;
+
+		if (of_get_property(np, "use-max-discard-size", NULL))
+			host->quirks2 |= SDHCI_QUIRK2_USE_MAX_DISCARD_SIZE;
+
+		if (of_get_property(np, "ignore-datatout-for-r1bcmd", NULL))
+			host->quirks2 |= SDHCI_QUIRK2_IGNORE_DATATOUT_FOR_R1BCMD;
+
+		if (of_get_property(np, "no-auto-hs200", NULL))
+			host->quirks2 |= SDHCI_QUIRK2_BROKEN_HS200;
+
 		if (of_device_is_compatible(np, "fsl,p2020-rev1-esdhc"))
 			host->quirks |= SDHCI_QUIRK_BROKEN_DMA;
 
