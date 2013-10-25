@@ -400,4 +400,12 @@ config DMATEST
 config DMA_ENGINE_RAID
 	bool
 
+config MSM_BAM_DMA
+	tristate "MSM BAM DMA support"
+	depends on ARCH_MSM
+	select DMA_ENGINE
+	---help---
+	  Enable support for the MSM BAM DMA controller.  This controller
+	  provides DMA capabilities for a variety of on-chip devices.
+
 endif
