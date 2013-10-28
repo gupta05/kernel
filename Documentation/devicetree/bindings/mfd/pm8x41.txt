@@ -1,0 +1,33 @@
+Qualcomm PM8841 and PM8941 PMIC multi-function devices
+
+The PM8x41 PMICs are used with the Qualcomm Snapdragon 800 series SoCs, and are
+interfaced to the chip via the SPMI (System Power Management Interface) bus.
+Support for  multiple independent functions are implemented by splitting the
+16-bit SPMI slave address space into 256 smaller fixed-size regions, 256 bytes
+each.  A function can consume one or more of these fixed-size register regions.
+
+Required properties:
+- compatible: Must be one of:
+     "qcom,pm8841"
+     "qcom,pm8941"
+- reg: Specifies the SPMI USID slave address for this device
+- #address-cells = <1>
+- #size-cells = <0>
+
+Each child node represents a function of the PM8x41.  Each child 'reg' entry
+describes an offset within the USID slave address where the region starts.
+
+Example:
+
+pm8941@0 {
+	compatible = "qcom,pm8941";
+	reg = <0x0>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	rtc {
+		compatible = "qcom,pm8941-rtc";
+		reg = <0x6000 0x6100>;
+	};
+}
