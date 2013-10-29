@@ -557,7 +557,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	}
 	ret = devm_request_threaded_irq(&pdev->dev, msm_host->pwr_irq, NULL,
 					sdhci_msm_pwr_irq, IRQF_ONESHOT,
-					dev_name(&pdev->dev), host);
+					dev_name(&pdev->dev), msm_host);
 	if (ret) {
 		dev_err(&pdev->dev, "Request threaded irq(%d) failed (%d)\n",
 			msm_host->pwr_irq, ret);
