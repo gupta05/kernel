@@ -47,8 +47,8 @@ static int pm8x41_probe(struct spmi_device *sdev)
 }
 
 static struct of_device_id pm8x41_id_table[] = {
-	{ "qcom,pm8841", },
-	{ "qcom,pm8941", },
+	{ .compatible = "qcom,pm8841", },
+	{ .compatible = "qcom,pm8941", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, pm8x41_id_table);
