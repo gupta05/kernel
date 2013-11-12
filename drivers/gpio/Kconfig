@@ -182,6 +182,15 @@ config GPIO_MPC8XXX
 	  Say Y here if you're going to use hardware that connects to the
 	  MPC512x/831x/834x/837x/8572/8610 GPIOs.
 
+config GPIO_MSM_QPNP
+	tristate "Qualcomm QPNP gpio support"
+	help
+	  Say 'y' here to include support for the Qualcomm QPNP gpio
+	  driver. This driver supports Device Tree and allows a
+	  device_node to be registered as a gpio-controller. It
+	  does not handle gpio interrupts directly. That work is handled
+	  by CONFIG_MSM_QPNP_INT.
+
 config GPIO_MSM_V1
 	tristate "Qualcomm MSM GPIO v1"
 	depends on GPIOLIB && ARCH_MSM && (ARCH_MSM7X00A || ARCH_MSM7X30 || ARCH_QSD8X50)
