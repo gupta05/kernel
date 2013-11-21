@@ -163,7 +163,7 @@ static int clearpad_parse_dt(struct device *dev,
 }
 #endif
 
-static int __devinit clearpad_i2c_probe(struct i2c_client *client,
+static int clearpad_i2c_probe(struct i2c_client *client,
 				      const struct i2c_device_id *id)
 {
 	struct clearpad_data clearpad_data = {
@@ -213,6 +213,7 @@ static int __devinit clearpad_i2c_probe(struct i2c_client *client,
 	clearpad_data.bdata->dev = &client->dev;
 	clearpad_data.bdata->of_node = client->dev.of_node;
 	this->pdev->dev.parent = &client->dev;
+	this->pdev->dev.of_node = client->dev.of_node;
 	rc = platform_device_add_data(this->pdev,
 			&clearpad_data, sizeof(clearpad_data));
 	if (rc)
@@ -234,7 +235,7 @@ exit:
 	return rc;
 }
 
-static int __devexit clearpad_i2c_remove(struct i2c_client *client)
+static int clearpad_i2c_remove(struct i2c_client *client)
 {
 	struct clearpad_i2c *this = dev_get_drvdata(&client->dev);
 	platform_device_unregister(this->pdev);
@@ -266,7 +267,7 @@ static struct i2c_driver clearpad_i2c_driver = {
 	},
 	.id_table	= clearpad_id,
 	.probe		= clearpad_i2c_probe,
-	.remove		= __devexit_p(clearpad_i2c_remove),
+	.remove		= clearpad_i2c_remove,
 };
 
 static int __init clearpad_i2c_init(void)
