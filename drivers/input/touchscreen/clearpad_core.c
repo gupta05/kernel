@@ -11,6 +11,8 @@
  * published by the Free Software Foundation.
  */
 
+#define DEBUG
+
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include <linux/input.h>
@@ -21,7 +23,6 @@
 #include <linux/miscdevice.h>
 #include <linux/clearpad.h>
 #include <linux/input/evgen_helper.h>
-#include <mach/gpio.h>
 #include <linux/ctype.h>
 #include <linux/firmware.h>
 #include <linux/slab.h>
@@ -1627,7 +1628,7 @@ static int clearpad_vreg_configure(struct synaptics_clearpad *this,
 		this->vreg_touch_vdd = regulator_get(dev, CLEARPAD_VDD);
 		if (IS_ERR(this->vreg_touch_vdd)) {
 			dev_err(dev, "%s: get vdd failed\n", __func__);
-			rc = -ENODEV;
+			rc = PTR_ERR(this->vreg_touch_vdd);
 			goto err_ret;
 		}
 		rc = regulator_set_voltage(this->vreg_touch_vdd,
@@ -1941,7 +1942,7 @@ static void synaptics_funcarea_initialize(struct synaptics_clearpad *this)
 				pointer_area.y2 -= pointer_data->offset_y;
 			}
 			input_mt_init_slots(this->input,
-						this->extents.n_fingers);
+						this->extents.n_fingers, 0);
 			input_set_abs_params(this->input, ABS_MT_POSITION_X,
 					     pointer_area.x1,
 					     pointer_area.x2, 0, 0);
@@ -1960,7 +1961,7 @@ static void synaptics_funcarea_initialize(struct synaptics_clearpad *this)
 					MT_TOOL_FINGER, MT_TOOL_FINGER, 0, 0);
 
 			input_mt_init_slots(this->input_pen,
-						this->extents.n_fingers);
+						this->extents.n_fingers, 0);
 			input_set_abs_params(this->input_pen, ABS_MT_POSITION_X,
 					     pointer_area.x1,
 					     pointer_area.x2, 0, 0);
@@ -3970,7 +3971,7 @@ exit:
 }
 #endif /* CONFIG_DEBUG_FS */
 
-static int __devinit clearpad_probe(struct platform_device *pdev)
+static int clearpad_probe(struct platform_device *pdev)
 {
 	struct clearpad_data *cdata = pdev->dev.platform_data;
 	struct synaptics_clearpad *this;
@@ -4026,6 +4027,7 @@ static int __devinit clearpad_probe(struct platform_device *pdev)
 		}
 
 		rmi_dev->dev.parent = &pdev->dev;
+		rmi_dev->dev.of_node = pdev->dev.of_node;
 		rc = platform_device_add_data(rmi_dev, cdata,
 						sizeof(struct clearpad_data));
 		if (rc)
@@ -4214,7 +4216,7 @@ exit:
 	return rc;
 }
 
-static int __devexit clearpad_remove(struct platform_device *pdev)
+static int clearpad_remove(struct platform_device *pdev)
 {
 #ifdef CONFIG_TOUCHSCREEN_CLEARPAD_RMI_DEV
 	struct clearpad_data *cdata = pdev->dev.platform_data;
@@ -4262,7 +4264,7 @@ static struct platform_driver clearpad_driver = {
 		.pm	= &synaptics_clearpad_pm,
 	},
 	.probe		= clearpad_probe,
-	.remove		= __devexit_p(clearpad_remove),
+	.remove		= clearpad_remove,
 };
 
 static int __init clearpad_init(void)
