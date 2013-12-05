@@ -1130,10 +1130,11 @@ static int qpnp_pin_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	int i, rc;
 	int lowest_gpio = UINT_MAX, highest_gpio = 0;
-	u32 intspec[4], gpio;
+	u32 gpio;
 	char version[Q_REG_SUBTYPE - Q_REG_DIG_MAJOR_REV + 1];
 	int ngpio = 0;
 	int err;
+	struct of_phandle_args irq_data;
 
 	q_chip = devm_kzalloc(&pdev->dev, sizeof(*q_chip), GFP_KERNEL);
 	if (!q_chip) {
@@ -1256,12 +1257,14 @@ static int qpnp_pin_probe(struct platform_device *pdev)
 			goto err_probe;
 
 		/* call into irq_domain to get irq mapping */
-		intspec[0] = 0; /* XXX: slave id */
-		intspec[1] = (q_spec->offset >> 8) & 0xFF;
-		intspec[2] = 0;
-		intspec[3] = 0;
-		q_spec->irq = irq_create_of_mapping(q_chip->int_ctrl,
-							intspec, 4);
+		irq_data.np = q_chip->int_ctrl;
+		irq_data.args[0] = 0;
+		irq_data.args[1] = (q_spec->offset >> 8) & 0xff;
+		irq_data.args[2] = 0;
+		irq_data.args[3] = 0;
+		irq_data.args_count = 4;
+
+		q_spec->irq = irq_create_of_mapping(&irq_data);
 		if (!q_spec->irq) {
 			dev_err(&pdev->dev, "invalid irq for gpio %u\n", gpio);
 			rc = -EINVAL;
