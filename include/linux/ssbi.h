@@ -20,4 +20,7 @@
 int ssbi_write(struct device *dev, u16 addr, const u8 *buf, int len);
 int ssbi_read(struct device *dev, u16 addr, u8 *buf, int len);
 
+int ssbi_reg_read(void *context, unsigned int reg, unsigned int *val);
+int ssbi_reg_write(void *context, unsigned int reg, unsigned int val);
+
 #endif

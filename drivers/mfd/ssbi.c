@@ -269,6 +269,19 @@ int ssbi_write(struct device *dev, u16 addr, const u8 *buf, int len)
 }
 EXPORT_SYMBOL_GPL(ssbi_write);
 
+int ssbi_reg_read(void *context, unsigned int reg, unsigned int *val)
+{
+	*val = 0;
+	return ssbi_read(context, reg, (u8 *)val, 1);
+}
+EXPORT_SYMBOL_GPL(ssbi_reg_read);
+
+int ssbi_reg_write(void *context, unsigned int reg, unsigned int val)
+{
+	return ssbi_write(context, reg, (u8 *)&val, 1);
+}
+EXPORT_SYMBOL_GPL(ssbi_reg_write);
+
 static int ssbi_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
