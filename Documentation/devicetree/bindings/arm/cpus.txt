@@ -191,6 +191,35 @@ nodes to be present and contain the properties described below.
 			  property identifying a 64-bit zero-initialised
 			  memory location.
 
+	- interrupts
+		Usage: required for cpus with compatible string "qcom,krait".
+		Value type: <prop-encoded-array>
+		Definition: L1/CPU error interrupt
+
+	- next-level-cache
+		Usage: optional
+		Value type: <phandle>
+		Definition: phandle pointing to the next level cache
+
+- cache node
+
+	Description: Describes a cache in an ARM based system
+
+	- compatible
+		Usage: required
+		Value type: <string>
+		Definition: shall contain at least "cache"
+
+	- cache-level
+		Usage: required
+		Value type: <u32>
+		Definition: level in the cache heirachy
+
+	- interrupts
+		Usage: required for cpus with compatible string "qcom,krait"
+		Value type: <prop-encoded-array>
+		Definition: the L2 error interrupt
+
 Example 1 (dual-cluster big.LITTLE system 32-bit):
 
 	cpus {
@@ -380,5 +409,48 @@ cpus {
 		reg = <0x1 0x10101>;
 		enable-method = "spin-table";
 		cpu-release-addr = <0 0x20000000>;
+	};
+};
+
+
+Example 5 (Krait 32-bit system):
+
+cpus {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	interrupts = <1 9 0xf04>;
+
+	cpu@0 {
+		device_type = "cpu";
+		compatible = "qcom,krait";
+		reg = <0>;
+		next-level-cache = <&L2>;
+	};
+
+	cpu@1 {
+		device_type = "cpu";
+		compatible = "qcom,krait";
+		reg = <1>;
+		next-level-cache = <&L2>;
+	};
+
+	cpu@2 {
+		device_type = "cpu";
+		compatible = "qcom,krait";
+		reg = <2>;
+		next-level-cache = <&L2>;
+	};
+
+	cpu@3 {
+		device_type = "cpu";
+		compatible = "qcom,krait";
+		reg = <3>;
+		next-level-cache = <&L2>;
+	};
+
+	L2: l2-cache {
+		compatible = "cache";
+		cache-level = <2>;
+		interrupts = <0 2 0x4>;
 	};
 };
