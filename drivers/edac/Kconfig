@@ -368,4 +368,12 @@ config EDAC_OCTEON_PCI
 	  Support for error detection and correction on the
 	  Cavium Octeon family of SOCs.
 
+config EDAC_KRAIT_CACHE
+	tristate "Krait L1/L2 Cache"
+	depends on EDAC_MM_EDAC && ARCH_MSM
+	select KRAIT_L2_ACCESSORS
+	help
+	  Support for error detection and correction on the
+	  Krait L1/L2 cache controller.
+
 endif # EDAC
