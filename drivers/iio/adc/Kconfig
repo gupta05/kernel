@@ -187,6 +187,16 @@ config NAU7802
 	  To compile this driver as a module, choose M here: the
 	  module will be called nau7802.
 
+config PM8X41_ADC
+	tristate "Qualcomm PM8x41 PMIC ADC block driver"
+	depends on REGMAP && OF
+	depends on MFD_PM8X41 || COMPILE_TEST
+	help
+	  Say yes here to build support for Qualcomm PM8x41 PMIC ADCs.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called pm8x41-adc.
+
 config TI_ADC081C
 	tristate "Texas Instruments ADC081C021/027"
 	depends on I2C
