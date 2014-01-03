@@ -668,12 +668,18 @@ static void as3676_shutdown(struct i2c_client *client)
 	AS3676_UNLOCK();
 }
 
+static const struct of_device_id of_as3676_match[] = {
+	{ .compatible = "ams,as3676", },
+	{},
+};
+
 static struct i2c_driver as3676_driver = {
 	.driver = {
 		.name   = "as3676",
 #ifdef CONFIG_PM
 		.pm     = &as3676_pm,
 #endif
+		.of_match_table = of_match_ptr(of_as3676_match),
 	},
 	.probe  = as3676_probe,
 	.remove = as3676_remove,
@@ -2496,8 +2502,8 @@ static int as3676_configure(struct i2c_client *client,
 		struct as3676_led *led = &data->leds[i];
 		struct as3676_platform_led *pled = &pdata->leds[i];
 		led->pled = pled;
-		if (pled->name)
-			led->name = pled->name;
+		if (!pled->name)
+			continue;
 		if (pled->on_charge_pump) {
 			AS3676_MODIFY_REG(led->dls_mode_reg - 0x32,
 					1 << led->dls_mode_shift,
@@ -2512,7 +2518,7 @@ static int as3676_configure(struct i2c_client *client,
 		led->pled->max_current_uA =
 			led->pled->max_current_uA / 150 * 150;
 		led->client = client;
-		led->ldev.name = led->name;
+		led->ldev.name = pled->name;
 		led->ldev.brightness = LED_OFF;
 		led->ldev.brightness_set = as3676_set_led_brightness;
 		led->ldev.blink_set = NULL;
@@ -2564,6 +2570,9 @@ exit:
 	if (i > 0)
 		for (i = i - 1; i >= 0; i--) {
 			struct as3676_led *led = &data->leds[i];
+			if (!led->name)
+				continue;
+
 			device_remove_attributes(led->ldev.dev,
 				as3676_led_attributes);
 			device_remove_file(led->ldev.dev, led->aud_file);
@@ -2572,13 +2581,110 @@ exit:
 	return err;
 }
 
+static struct as3676_platform_data *as3676_of_parse(struct device *dev)
+{
+	struct as3676_platform_data *pdata;
+	struct as3676_platform_led led;
+	struct device_node *np = dev->of_node;
+	struct device_node *np_led;
+	u32 index;
+	u32 val;
+	int ret;
+
+	pdata = devm_kzalloc(dev, sizeof(struct as3676_platform_data), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(dev, "unable to allocate platform data struct\n");
+		return NULL;
+	}
+
+	ret = of_property_read_u32(np, "ams,step-up-vtuning", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,step-up-vtuning property\n");
+	pdata->step_up_vtuning = val;
+
+	ret = of_property_read_u32(np, "ams,audio-speed-down", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,audio-speed-down\n");
+	pdata->audio_speed_down = val;
+
+	ret = of_property_read_u32(np, "ams,audio-speed-up", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,audio-speed-up\n");
+	pdata->audio_speed_up = val;
+
+	ret = of_property_read_u32(np, "ams,audio-agc-ctrl", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,audio-agc-ctrl\n");
+	pdata->audio_agc_ctrl = val;
+
+	ret = of_property_read_u32(np, "ams,audio-gain", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,audio-gain\n");
+	pdata->audio_gain = val;
+
+	ret = of_property_read_u32(np, "ams,audio-source", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,audio-source\n");
+	pdata->audio_source = val;
+
+	pdata->step_up_lowcur = of_property_read_bool(np, "ams,step-up-lowcur");
+
+	pdata->reset_on_i2c_shutdown = of_property_read_bool(np, "ams,reset-on-i2c-shutdown");
+
+	ret = of_property_read_u32(np, "ams,caps-mounted-on-dcdc-feedback", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,caps-mounted-on-dcdc-feedback\n");
+	pdata->caps_mounted_on_dcdc_feedback = val;
+
+	ret = of_property_read_u32(np, "ams,cp-control", &val);
+	if (ret)
+		dev_err(dev, "missing mandatory ams,cp-control\n");
+	pdata->cp_control = val;
+
+	for_each_child_of_node(np, np_led) {
+		memset(&led, 0, sizeof(led));
+
+		ret = of_property_read_u32(np_led, "ams,led", &index);
+		if (ret || index >= ARRAY_SIZE(pdata->leds)) {
+			dev_err(dev, "invalid ams,led\n");
+			continue;
+		}
+
+		ret = of_property_read_string(np_led, "ams,name", &led.name);
+		if (ret < 0)
+			dev_err(dev, "missing mandatory ams,name property");
+
+		led.on_charge_pump = of_property_read_bool(np_led, "ams,on-charge-pump");
+
+		ret = of_property_read_u32(np_led, "ams,max-current", &val);
+		if (ret)
+			dev_err(dev, "missing mandatory ams,max-current");
+		led.max_current_uA = val;
+
+		ret = of_property_read_u32(np_led, "ams,startup-current", &val);
+		if (ret != -EINVAL)
+			led.startup_current_uA = val;
+
+		led.use_dls = of_property_read_bool(np_led, "ams,use-dls");
+
+		pdata->leds[index] = led;
+	}
+
+	return pdata;
+}
+
 static int as3676_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
 	struct as3676_data *data;
-	struct as3676_platform_data *as3676_pdata = client->dev.platform_data;
+	struct as3676_platform_data *as3676_pdata;
 	int id1, id2, i;
 	int err = 0;
+
+	if (client->dev.of_node)
+		as3676_pdata = as3676_of_parse(&client->dev);
+	else
+		as3676_pdata = client->dev.platform_data;
 
 	if (!as3676_pdata)
 		return -EIO;
