@@ -7,6 +7,7 @@ config ARCH_MSM_DT
 	select ARCH_REQUIRE_GPIOLIB
 	select CLKSRC_OF
 	select GENERIC_CLOCKEVENTS
+	select PINCTRL
 	help
 	  Support for Qualcomm's devicetree based MSM systems.
 
