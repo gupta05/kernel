@@ -468,6 +468,13 @@ config UCB1400_CORE
 	  To compile this driver as a module, choose M here: the
 	  module will be called ucb1400_core.
 
+config MFD_MSM_RPM
+	tristate "Qualcomm RPM"
+	depends on ARCH_MSM
+	select MFD_CORE
+	help
+	  Select this option to enable the Qualcomm RPM driver.
+
 config MFD_PM8XXX
 	tristate
 
