@@ -497,6 +497,14 @@ config MFD_PM8XXX_IRQ
 	  This is required to use certain other PM 8xxx features, such as GPIO
 	  and MPP.
 
+config MFD_QCOM_SMD
+	tristate "Qualcomm Shared Memory Driver"
+	depends on ARCH_MSM
+	help
+	  This enables support for the Qualcomm Shared Memory Driver used for communication
+	  with various Qualcomm peripherals; like the Resource Power Management cpu and the modem
+	  subsystem.
+
 config MFD_RDC321X
 	tristate "RDC R-321x southbridge"
 	select MFD_CORE
