@@ -295,6 +295,7 @@ dtb-$(CONFIG_ARCH_QCOM) += qcom-msm8660-surf.dtb \
 	qcom-msm8960-cdp.dtb \
 	qcom-apq8074-dragonboard.dtb \
 	sony-blue-mint.dtb \
+	sony-lagan-cdb.dtb \
 	sony-rhine-cdb.dtb
 dtb-$(CONFIG_ARCH_U8500) += ste-snowball.dtb \
 	ste-hrefprev60-stuib.dtb \
