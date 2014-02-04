@@ -1,0 +1,237 @@
+/dts-v1/;
+
+#include "skeleton.dtsi"
+#include <dt-bindings/clock/qcom,gcc-msm8960.h>
+
+/ {
+	model = "Sony Lagan CDB";
+	compatible = "qcom,msm8960";
+	interrupt-parent = <&intc>;
+
+	intc: interrupt-controller@2000000 {
+		compatible = "qcom,msm-qgic2";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		reg = < 0x02000000 0x1000 >,
+		      < 0x02002000 0x1000 >;
+	};
+
+	timer@200a000 {
+		compatible = "qcom,kpss-timer", "qcom,msm-timer";
+		interrupts = <1 1 0x301>,
+			     <1 2 0x301>,
+			     <1 3 0x301>;
+		reg = <0x0200a000 0x100>;
+		clock-frequency = <27000000>,
+				  <32768>;
+		cpu-offset = <0x80000>;
+	};
+
+	gcc: clock-controller@900000 {
+		compatible = "qcom,gcc-msm8960";
+		reg = <0x900000 0x4000>;
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+	};
+
+	msmgpio: pinctrl@800000 {
+		compatible = "qcom,msm8960-pinctrl";
+		reg = <0x800000 0x4000>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupts = <0 32 0x4>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&debug_uart>;
+
+		debug_uart: debug_uart {
+			mux {
+				pins = "gpio51", "gpio52";
+				function = "gsbi5_uart";
+			};
+
+			tx {
+				pins = "gpio34";
+				drive-strength = <4>;
+				bias-disable;
+			};
+
+			rx {
+				pins = "gpio35";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		gsbi10_i2c_state: gsbi10_i2c {
+			i2c {
+				pins = "gpio73", "gpio74";
+				function = "gsbi10_i2c";
+
+				drive-strength = <4>;
+				bias-disable;
+			};
+		};
+
+		gsbi12_i2c_state: gsbi12_i2c {
+			i2c {
+				pins = "gpio44", "gpio45";
+				function = "gsbi12_i2c";
+
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		lc898300xa_active: lc898300xa_active {
+			rstb {
+				pins = "gpio79";
+				drive-strength = <2>;
+				bias-disable;
+			};
+
+			en {
+				pins = "gpio53";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
+	serial@1a040000 {
+		compatible = "qcom,msm-uartdm-v1.3", "qcom,msm-uartdm";
+		reg = <0x1a240000 0x1000>,
+		      <0x1a200000 0x1000>;
+		interrupts = <0 154 0x0>;
+		clocks = <&gcc GSBI5_UART_CLK>, <&gcc GSBI5_H_CLK>;
+		clock-names = "core", "iface";
+	};
+
+	qcom,ssbi@500000 {
+		compatible = "qcom,ssbi";
+		reg = <0x500000 0x1000>;
+		qcom,controller-type = "pmic-arbiter";
+	};
+
+	msm_rpm {
+		compatible = "qcom,msm8960-rpm";
+		reg = <0x108000  0x1000 0x02011008 0x4>;
+
+		interrupts = <0 19 0>, <0 21 0>, <0 22 0>;
+		interrupt-names = "ack", "err", "wakeup";
+	};
+
+	gsbi10_i2c@1a200000 {
+		compatible = "qcom,i2c-qup";
+		reg = <0x1a280000 0x1000>;
+		interrupts = <0 192 0>;
+
+		status = "disabled";
+
+		clocks = <&gcc GSBI10_QUP_CLK>, <&gcc GSBI10_H_CLK>;
+		clock-names = "core", "iface";
+
+		clock-frequency = <355000>;
+		qcom,src-freq = <24000000>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&gsbi10_i2c_state>;
+
+		as3676 {
+			compatible = "ams,as3676";
+			reg = <0x40>;
+
+			ams,step-up-vtuning = <18>;
+			ams,audio-speed-down = <1>;
+			ams,audio-speed-up = <4>;
+			ams,audio-agc-ctrl = <1>;
+			ams,audio-gain = <7>;
+			ams,audio-source = <2>;
+			ams,step-up-lowcur;
+			ams,reset-on-i2c-shutdown;
+			ams,caps-mounted-on-dcdc-feedback = <1>;
+			ams,cp-control = <0x10>;
+
+			backlight_1 {
+				ams,led = <0>;
+				ams,name = "lcd-backlight_1";
+				ams,max-current = <21000>;
+				ams,startup-current = <4000>;
+				ams,use-dls;
+			};
+
+			backlight_2 {
+				ams,led = <1>;
+				ams,name = "lcd-backlight_2";
+				ams,max-current = <21000>;
+				ams,startup-current = <4000>;
+				ams,use-dls;
+			};
+
+			red {
+				ams,led = <6>;
+				ams,name = "red";
+				ams,on-charge-pump;
+				ams,max-current = <1000>;
+			};
+
+			green {
+				ams,led = <7>;
+				ams,name = "green";
+				ams,on-charge-pump;
+				ams,max-current = <1000>;
+			};
+
+			blue {
+				ams,led = <8>;
+				ams,name = "blue";
+				ams,on-charge-pump;
+				ams,max-current = <1000>;
+			};
+		};
+	};
+
+	gsbi12_i2c@12480000 {
+		compatible = "qcom,i2c-qup";
+		reg = <0x124a0000 0x1000>;
+		interrupts = <0 196 0>;
+
+		clocks = <&gcc GSBI12_QUP_CLK>, <&gcc GSBI12_H_CLK>;
+		clock-names = "core", "iface";
+
+		clock-frequency = <355000>;
+		qcom,src-freq = <24000000>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		status = "disabled";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&gsbi12_i2c_state>;
+
+		lc898300xa {
+			compatible = "sanyo,lc898300xa";
+			reg = <0x49>;
+
+//			vdd-supply = <&pm8921_l16>;
+
+			rstb-gpios = <&msmgpio 79 0>;
+			en-gpios = <&msmgpio 53 0>;
+
+			sanyo,resonance-frequency = <150>;
+			sanyo,startup-time = <5>;
+			sanyo,break-time = <2>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&lc898300xa_active>;
+		};
+
+	};
+};

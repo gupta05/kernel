@@ -122,6 +122,7 @@ dtb-$(CONFIG_ARCH_MSM) += qcom-msm8660-surf.dtb \
 	qcom-msm8960-cdp.dtb \
 	qcom-apq8074-dragonboard.dtb \
 	sony-blue-mint.dtb \
+	sony-lagan-cdb.dtb \
 	sony-rhine-cdb.dtb
 dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
 	armada-370-mirabox.dtb \
