@@ -398,6 +398,13 @@ config REGULATOR_PCF50633
 	 Say Y here to support the voltage regulators and convertors
 	 on PCF50633
 
+config REGULATOR_QCOM_SMD
+	tristate "Qualcomm SMD RPM regulator driver"
+	depends on MFD_QCOM_SMD_RPM
+	help
+	  This driver provides support for regulatos controlled by the Qualcomm
+	  Resource Power Manager cpu over SMD.
+
 config REGULATOR_PFUZE100
 	tristate "Freescale PFUZE100 regulator driver"
 	depends on I2C
