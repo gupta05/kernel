@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2014, Sony Mobile Communications AB.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -58,10 +72,8 @@ struct rpm_regulator_data {
 	u32 value;
 };
 
-#define SWEN 0x6e657773 /* 'swen' */
-#define UV 0x7675 /* 'uv' */
-
-int qcom_rpm_smd_write(const struct device *dev, int resource, void *buf, size_t count);
+#define REGULATOR_KEY_SWEN 0x6e657773 /* 'swen' */
+#define REGULATOR_KEY_UV 0x7675 /* 'uv' */
 
 static int rpm_reg_enable(struct regulator_dev *rdev)
 {
@@ -69,7 +81,7 @@ static int rpm_reg_enable(struct regulator_dev *rdev)
 	struct rpm_regulator_data data;
 	int ret;
 
-	data.key = SWEN;
+	data.key = REGULATOR_KEY_SWEN;
 	data.nbytes = sizeof(u32);
 	data.value = 1;
 
@@ -95,7 +107,7 @@ static int rpm_reg_disable(struct regulator_dev *rdev)
 	struct rpm_regulator_data data;
 	int ret;
 
-	data.key = SWEN;
+	data.key = REGULATOR_KEY_SWEN;
 	data.nbytes = sizeof(u32);
 	data.value = 0;
 
@@ -121,7 +133,7 @@ static int rpm_reg_set_voltage(struct regulator_dev *rdev, int min_uV, int max_u
 	struct rpm_regulator_data data;
 	int ret = 0;
 
-	data.key = UV;
+	data.key = REGULATOR_KEY_UV;
 	data.nbytes = sizeof(u32);
 	data.value = min_uV;
 
@@ -181,7 +193,6 @@ static int rpm_reg_probe(struct platform_device *pdev)
 
 	/* XXX:
 	 * tighten constraints of initdata
-	 * round min_uV and max_uV to step values
 	 */
 
 	/*
