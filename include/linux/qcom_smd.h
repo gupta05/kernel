@@ -10,10 +10,9 @@ struct qcom_smd_device {
 
 /**
  * struct qcom_smd_driver - qcom smd driver struct
- * @drv: underlying device driver
- * @id_table: rpmsg ids serviced by this driver
- * @probe: invoked when a matching rpmsg channel (i.e. device) is found
- * @remove: invoked when the rpmsg channel is removed
+ * @driver: underlying device driver
+ * @probe: invoked when a matching smd channel (i.e. device) is found
+ * @remove: invoked when the smd channel is removed
  * @callback: invoked when an inbound message is received on the channel
  */
 struct qcom_smd_driver {
