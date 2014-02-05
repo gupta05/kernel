@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2014, Sony Mobile Communications AB.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #define DEBUG
 
 #include <linux/module.h>
@@ -100,31 +114,7 @@ static const struct of_device_id qcom_smd_rpm_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, qcom_smd_rpm_of_match);
 
-#if 0
-
-/*
- * Implementation
- */
-int msm_rpm_read_status(const struct device *dev, int resource, u32 *buf, size_t count)
-{
-	const struct msm_rpm_resource *res;
-	struct msm_rpm *rpm = dev_get_drvdata(dev);
-	unsigned i;
-
-	if (WARN_ON(resource < 0 || resource >= rpm->nresources))
-		return -EINVAL;
-
-	res = &rpm->resource_table[resource];
-	if (WARN_ON(res->count != count))
-		return -EINVAL;
-
-	for (i = 0; i < count; i++)
-		buf[i] = readl(MSM_STATUS_REG(rpm, res->status_id + i));
-
-	return 0;
-}
-EXPORT_SYMBOL(msm_rpm_read_status);
-#endif
+#define MAX_RESOURCE_PARAM_LEN 84
 
 int qcom_rpm_smd_write(const struct device *dev, int resource, void *buf, size_t count)
 {
@@ -136,7 +126,7 @@ int qcom_rpm_smd_write(const struct device *dev, int resource, void *buf, size_t
 	struct {
 		struct rpm_request_header req;
 		struct rpm_message_header msg;
-		u32 payload[3];
+		u8 payload[MAX_RESOURCE_PARAM_LEN];
 	} pkt;
 
 	if (WARN_ON(resource < 0 || resource >= rpm->nresources))
@@ -167,42 +157,56 @@ int qcom_rpm_smd_write(const struct device *dev, int resource, void *buf, size_t
 	wait_for_completion(&rpm->ack);
 
 	ret = rpm->ack_status;
-#if 0
-	/* BIT(31) is rejected */
-	if (rpm->ack_status & BIT(31))
-		ret = -EIO;
-#endif
-
 	mutex_unlock(&rpm->lock);
 
 	return ret;
 }
 EXPORT_SYMBOL(qcom_rpm_smd_write);
 
-struct msm_rpm_ack_msg {
-	uint32_t req;
-	uint32_t req_len;
-	uint32_t rsc_id;
-	uint32_t msg_len;
-	uint32_t id_ack;
+struct qcom_rpm_ack_hdr {
+	u32 req;
+	u32 req_len;
 };
+
+struct qcom_rpm_ack_msg {
+	u32 rsc_id;
+	u32 msg_len;
+	u32 id_ack;
+};
+
+struct qcom_rpm_ack_payload {
+	u32 unknown1;
+	u32 unknown2;
+	u8 message[0];
+};
+
+#define RPM_ACK_PAYLOAD_ERR 0x727265 /* 'err\0' */
+#define RPM_ACK_PAYLOAD_INV_RSC "resource does not exist"
 
 static int qcom_smd_rpm_callback(struct qcom_smd_device *sdev, void *buf, size_t count)
 {
 	struct qcom_smd_rpm *rpm = dev_get_drvdata(&sdev->dev);
-	struct msm_rpm_ack_msg *ack = buf;
-	uint32_t payload_len;
-	char *payload;
+	struct qcom_rpm_ack_hdr *hdr = buf;
+	struct qcom_rpm_ack_msg *msg = (struct qcom_rpm_ack_msg*)(hdr + 1);
+	struct qcom_rpm_ack_payload *payload = (struct qcom_rpm_ack_payload*)(msg + 1);
 
-	payload_len = ack->req_len - 3 * sizeof(uint32_t);
-
-	if (payload_len == 0) {
+	if (hdr->req_len == sizeof(struct qcom_rpm_ack_msg)) {
 		rpm->ack_status = 0;
 		goto out;
 	}
 
+	/* XXX: test this error handling */
 	print_hex_dump(KERN_DEBUG, "rpm-callback", DUMP_PREFIX_OFFSET, 16, 4, buf, count, true);
-	rpm->ack_status = -EINVAL;
+
+	BUG_ON(payload->unknown1 == RPM_ACK_PAYLOAD_ERR);
+
+	if (!memcmp(payload->message, RPM_ACK_PAYLOAD_INV_RSC, sizeof(RPM_ACK_PAYLOAD_INV_RSC) - 1)) {
+		dev_err(&sdev->dev, "RPM NACK: Unsupported resource: 0%x\n", msg->rsc_id);
+		rpm->ack_status = -EINVAL;
+	} else {
+		dev_err(&sdev->dev, "RPM NACK: Invalid header\n");
+		rpm->ack_status = -ENODEV;
+	}
 
 out:
 	complete(&rpm->ack);

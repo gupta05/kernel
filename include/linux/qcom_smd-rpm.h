@@ -16,4 +16,6 @@ enum {
 	MSM_RPM_PM8941_L22,
 };
 
+int qcom_rpm_smd_write(const struct device *dev, int resource, void *buf, size_t count);
+
 #endif
