@@ -505,6 +505,12 @@ config MFD_QCOM_SMD
 	  with various Qualcomm peripherals; like the Resource Power Management cpu and the modem
 	  subsystem.
 
+config MFD_QCOM_SMD_RPM
+	tristate "Qualcomm SMD RPM driver"
+	depends on MFD_QCOM_SMD
+	help
+	  Driver for the Qualcomm Remote Power Management cpu over SMD
+
 config MFD_RDC321X
 	tristate "RDC R-321x southbridge"
 	select MFD_CORE
