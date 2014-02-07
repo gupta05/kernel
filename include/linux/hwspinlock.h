@@ -26,6 +26,7 @@
 #define HWLOCK_IRQ	0x02	/* Disable interrupts, don't save state */
 
 struct device;
+struct device_node;
 struct hwspinlock;
 struct hwspinlock_device;
 struct hwspinlock_ops;
@@ -65,6 +66,7 @@ int hwspin_lock_register(struct hwspinlock_device *bank, struct device *dev,
 int hwspin_lock_unregister(struct hwspinlock_device *bank);
 struct hwspinlock *hwspin_lock_request(void);
 struct hwspinlock *hwspin_lock_request_specific(unsigned int id);
+struct hwspinlock *of_hwspin_lock_request(struct device_node *np, const char *con_id);
 int hwspin_lock_free(struct hwspinlock *hwlock);
 int hwspin_lock_get_id(struct hwspinlock *hwlock);
 int __hwspin_lock_timeout(struct hwspinlock *, unsigned int, int,
