@@ -32,6 +32,8 @@ struct msm_rpm_reg {
 
 	int is_enabled;
 
+	int hpm_min_load;
+
 	int uV;
 };
 
@@ -74,6 +76,7 @@ struct rpm_regulator_data {
 
 #define REGULATOR_KEY_SWEN 0x6e657773 /* 'swen' */
 #define REGULATOR_KEY_UV 0x7675 /* 'uv' */
+#define REGULATOR_KEY_MV 0x766d /* 'mv' */
 
 static int rpm_reg_enable(struct regulator_dev *rdev)
 {
@@ -138,18 +141,35 @@ static int rpm_reg_set_voltage(struct regulator_dev *rdev, int min_uV, int max_u
 	data.value = min_uV;
 
 	ret = qcom_rpm_smd_write(vreg->dev->parent, vreg->resource, &data, sizeof(data));
+	if (!ret)
+		vreg->uV = min_uV;
 
 	return ret;
 }
 
 static unsigned int rpm_reg_get_optimum_mode(struct regulator_dev *rdev, int input_uV, int output_uV, int load_uA)
 {
-	return REGULATOR_MODE_NORMAL;
+	struct msm_rpm_reg *vreg = rdev_get_drvdata(rdev);
+
+	if (load_uA < vreg->hpm_min_load)
+		return REGULATOR_MODE_NORMAL;
+	else
+		return REGULATOR_MODE_IDLE;
 }
 
 static int rpm_reg_set_mode(struct regulator_dev *rdev, unsigned int mode)
 {
-	return 0;
+	struct msm_rpm_reg *vreg = rdev_get_drvdata(rdev);
+	struct rpm_regulator_data data;
+
+	data.key = REGULATOR_KEY_MV;
+	data.nbytes = sizeof(u32);
+	if (mode == REGULATOR_MODE_IDLE)
+		data.value = 0;
+	else
+		data.value = vreg->hpm_min_load;
+
+	return qcom_rpm_smd_write(vreg->dev->parent, vreg->resource, &data, sizeof(data));
 }
 
 static struct regulator_ops ldo_ops = {
@@ -206,10 +226,7 @@ static int rpm_reg_probe(struct platform_device *pdev)
 
 	initdata->constraints.input_uV = initdata->constraints.max_uV;
 
-	if (initdata->constraints.apply_uV &&
-	    initdata->constraints.min_uV == initdata->constraints.max_uV) {
-		vreg->uV = initdata->constraints.min_uV;
-	}
+	vreg->hpm_min_load = 10000;
 
 	desc = &vreg->desc;
 	desc->id = -1;
