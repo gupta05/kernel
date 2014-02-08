@@ -22,6 +22,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/qcom_smd.h>
+#include <linux/hwspinlock.h>
 
 #include <linux/delay.h>
 
@@ -72,6 +73,8 @@ struct qcom_smem_child {
 
 struct qcom_smem {
 	struct device *dev;
+
+	struct hwspinlock *hwlock;
 
 	void __iomem *base;
 	void __iomem *aux_base;
@@ -139,6 +142,11 @@ struct smd_alloc_elm {
 #define SMD_SS_RESET             0x00000005
 #define SMD_SS_RESET_OPENING     0x00000006
 
+/*
+ * Resolves the address and size of smem_id.
+ *
+ * The shared memory remote spinlock must be held when calling this function.
+ */
 static int smem_find(struct qcom_smem *smem, int smem_id, void **ptr, size_t *size)
 {
 	struct smem_shared *shared = smem->base;
@@ -165,8 +173,14 @@ static int smem_find(struct qcom_smem *smem, int smem_id, void **ptr, size_t *si
 static int smem_find_smd_channel(struct qcom_smem *smem, int edge, char *name)
 {
 	struct smd_alloc_elm *elm;
+	unsigned long flags;
+	int chan_id = -ENOENT;
 	int ret;
 	int i;
+
+	ret = hwspin_lock_timeout_irqsave(smem->hwlock, 100, &flags);
+	if (ret)
+		return ret;
 
 	ret = smem_find(smem, SMEM_CHANNEL_ALLOC_TBL, (void**)&elm, NULL);
 	if (ret < 0) {
@@ -184,11 +198,14 @@ static int smem_find_smd_channel(struct qcom_smem *smem, int edge, char *name)
 			if (name)
 				strlcpy(name, elm[i].name, SMD_CHANNEL_NAME_LEN);
 			BUG_ON(elm[i].cid != i);
-			return i;
+			chan_id = i;
+			break;
 		}
 	}
 
-	return -ENOENT;
+	hwspin_unlock_irqrestore(smem->hwlock, &flags);
+
+	return chan_id;
 }
 
 static int qcom_smd_dev_match(struct device *dev, struct device_driver *drv)
@@ -348,6 +365,8 @@ static irqreturn_t qcom_smd_channel_intr(int irq, void *dev)
 			channel->tx_info->state = SMD_SS_OPENED;
 			channel->tx_info->fSTATE = 1;
 
+			wmb();
+
 			qcom_smd_signal_channel(channel);
 		}
 
@@ -394,6 +413,7 @@ qcom_smd_register_device(struct qcom_smem *smem, struct qcom_smem_child *child, 
 	static unsigned qcom_smd_dev_index;
 	struct qcom_smd_channel *channel;
 	struct qcom_smd_device *qsdev;
+	unsigned long flags;
 	size_t fifo_size;
 	void *fifo_base;
 	int ret;
@@ -411,13 +431,21 @@ qcom_smd_register_device(struct qcom_smem *smem, struct qcom_smem_child *child, 
 	channel->signal_offset = child->signal_offset;
 	channel->signal_bit = child->signal_bit;
 
-	smem_find(smem, SMEM_SMD_BASE_ID + channel_idx, (void**)&info, NULL);
+	ret = hwspin_lock_timeout_irqsave(smem->hwlock, 100, &flags);
+	if (ret) {
+		kfree(channel);
+		return ERR_PTR(ret);
+	}
 
+	smem_find(smem, SMEM_SMD_BASE_ID + channel_idx, (void**)&info, NULL);
 	channel->tx_info = &info->ch0;
 	channel->rx_info = &info->ch1;
 
 	smem_find(smem, SMEM_SMD_FIFO_BASE_ID + channel_idx, &fifo_base, &fifo_size);
+	/* Each channel uses half the fifo */
 	fifo_size /= 2;
+
+	hwspin_unlock_irqrestore(smem->hwlock, &flags);
 
 	channel->tx_fifo = fifo_base;
 	channel->rx_fifo = fifo_base + fifo_size;
@@ -440,10 +468,11 @@ qcom_smd_register_device(struct qcom_smem *smem, struct qcom_smem_child *child, 
 	qsdev->dev.bus = &qcom_smd_bus;
 	qsdev->dev.release = qcom_smd_release_device;
 	qsdev->dev.of_node = of_get_next_child(child->of_node, NULL);
+
 	ret = devm_request_irq(smem->dev, channel->smd_irq, qcom_smd_channel_intr,
 			       IRQF_TRIGGER_RISING, name, qsdev);
 	if (ret) {
-		dev_err(smem->dev, "failed to request smd channel interrupt\n");
+		kfree(channel);
 		return ERR_PTR(ret);
 	}
 
@@ -470,7 +499,7 @@ static void qcom_smd_unregister_device(struct qcom_smem_child *child)
 static int qcom_smd_scan_channels(struct qcom_smem *smem)
 {
 	char name[SMD_CHANNEL_NAME_LEN] = {0};
-	int cid;
+	int chan_id;
 	struct qcom_smem_child *child;
 	int i;
 
@@ -480,10 +509,10 @@ static int qcom_smd_scan_channels(struct qcom_smem *smem)
 		if (child->disabled)
 			continue;
 
-		cid = smem_find_smd_channel(smem, child->edge, name);
-		if (cid >= 0 && !child->channel) {
-			child->channel = qcom_smd_register_device(smem, child, cid, name);
-		} else if (cid < 0 && child->channel) {
+		chan_id = smem_find_smd_channel(smem, child->edge, name);
+		if (chan_id >= 0 && !child->channel) {
+			child->channel = qcom_smd_register_device(smem, child, chan_id, name);
+		} else if (chan_id == -ENOENT && child->channel) {
 			qcom_smd_unregister_device(child);
 			child->channel = NULL;
 		}
@@ -492,7 +521,7 @@ static int qcom_smd_scan_channels(struct qcom_smem *smem)
 	return 0;
 }
 
-static int qcom_smem_probe(struct platform_device *pdev)
+static int qcom_smd_probe(struct platform_device *pdev)
 {
 	struct qcom_smem_child *child;
 	struct device_node *node;
@@ -524,6 +553,10 @@ static int qcom_smem_probe(struct platform_device *pdev)
 	smem->aux_base = devm_ioremap_nocache(&pdev->dev, res->start, resource_size(res));
 	if (!smem->aux_base)
 		return -ENOMEM;
+
+	smem->hwlock = of_hwspin_lock_request(pdev->dev.of_node, NULL);
+	if (IS_ERR(smem->hwlock))
+		return PTR_ERR(smem->hwlock);
 
 	dev_set_drvdata(&pdev->dev, smem);
 
@@ -587,7 +620,7 @@ static const struct of_device_id qcom_smem_of_match[] = {
 MODULE_DEVICE_TABLE(of, qcom_smem_of_match);
 
 static struct platform_driver qcom_smem_driver = {
-	.probe          = qcom_smem_probe,
+	.probe          = qcom_smd_probe,
 	.driver  = {
 		.name  = "qcom_smem",
 		.owner = THIS_MODULE,
