@@ -880,7 +880,7 @@
 	};
 
 	i2c2@f9924000 {
-		compatible = "qcom,i2c-qup";
+		compatible = "qcom,i2c-qup-v2.2.1";
 		reg = <0xf9924000 0x1000>;
 		interrupts = <0 96 0>;
 
@@ -961,7 +961,7 @@
 	};
 
 	i2c6@f9928000 {
-		compatible = "qcom,i2c-qup";
+		compatible = "qcom,i2c-qup-v2.2.1";
 		reg = <0xf9928000 0x1000>;
 		interrupts = <0 100 0>;
 
