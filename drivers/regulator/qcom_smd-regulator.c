@@ -44,27 +44,63 @@ static const struct msm_rpm_reg pm8941_s1 = { .desc.name = "pm8941_s1", .resourc
 static const struct msm_rpm_reg pm8941_s2 = { .desc.name = "pm8941_s2", .resource = MSM_RPM_PM8941_S2 };
 static const struct msm_rpm_reg pm8941_s3 = { .desc.name = "pm8941_s3", .resource = MSM_RPM_PM8941_S3 };
 
-static const struct msm_rpm_reg pm8941_ldo3 = { .desc.name = "pm8941_ldo3", .resource = MSM_RPM_PM8941_L3 };
-static const struct msm_rpm_reg pm8941_ldo6 = { .desc.name = "pm8941_ldo6", .resource = MSM_RPM_PM8941_L6 };
-static const struct msm_rpm_reg pm8941_ldo9 = { .desc.name = "pm8941_ldo9", .resource = MSM_RPM_PM8941_L9 };
+static const struct msm_rpm_reg pm8941_ldo1 =  { .desc.name = "pm8941_ldo1",  .resource = MSM_RPM_PM8941_L1 };
+static const struct msm_rpm_reg pm8941_ldo2 =  { .desc.name = "pm8941_ldo2",  .resource = MSM_RPM_PM8941_L2 };
+static const struct msm_rpm_reg pm8941_ldo3 =  { .desc.name = "pm8941_ldo3",  .resource = MSM_RPM_PM8941_L3 };
+static const struct msm_rpm_reg pm8941_ldo4 =  { .desc.name = "pm8941_ldo4",  .resource = MSM_RPM_PM8941_L4 };
+static const struct msm_rpm_reg pm8941_ldo5 =  { .desc.name = "pm8941_ldo5",  .resource = MSM_RPM_PM8941_L5 };
+static const struct msm_rpm_reg pm8941_ldo6 =  { .desc.name = "pm8941_ldo6",  .resource = MSM_RPM_PM8941_L6 };
+static const struct msm_rpm_reg pm8941_ldo7 =  { .desc.name = "pm8941_ldo7",  .resource = MSM_RPM_PM8941_L7 };
+static const struct msm_rpm_reg pm8941_ldo8 =  { .desc.name = "pm8941_ldo8",  .resource = MSM_RPM_PM8941_L8 };
+static const struct msm_rpm_reg pm8941_ldo9 =  { .desc.name = "pm8941_ldo9",  .resource = MSM_RPM_PM8941_L9 };
+static const struct msm_rpm_reg pm8941_ldo10 = { .desc.name = "pm8941_ldo10", .resource = MSM_RPM_PM8941_L10 };
 static const struct msm_rpm_reg pm8941_ldo11 = { .desc.name = "pm8941_ldo11", .resource = MSM_RPM_PM8941_L11 };
+static const struct msm_rpm_reg pm8941_ldo12 = { .desc.name = "pm8941_ldo12", .resource = MSM_RPM_PM8941_L12 };
+static const struct msm_rpm_reg pm8941_ldo13 = { .desc.name = "pm8941_ldo13", .resource = MSM_RPM_PM8941_L13 };
+static const struct msm_rpm_reg pm8941_ldo14 = { .desc.name = "pm8941_ldo14", .resource = MSM_RPM_PM8941_L14 };
+static const struct msm_rpm_reg pm8941_ldo15 = { .desc.name = "pm8941_ldo15", .resource = MSM_RPM_PM8941_L15 };
+static const struct msm_rpm_reg pm8941_ldo16 = { .desc.name = "pm8941_ldo16", .resource = MSM_RPM_PM8941_L16 };
+static const struct msm_rpm_reg pm8941_ldo17 = { .desc.name = "pm8941_ldo17", .resource = MSM_RPM_PM8941_L17 };
+static const struct msm_rpm_reg pm8941_ldo18 = { .desc.name = "pm8941_ldo18", .resource = MSM_RPM_PM8941_L18 };
 static const struct msm_rpm_reg pm8941_ldo19 = { .desc.name = "pm8941_ldo19", .resource = MSM_RPM_PM8941_L19 };
 static const struct msm_rpm_reg pm8941_ldo20 = { .desc.name = "pm8941_ldo20", .resource = MSM_RPM_PM8941_L20 };
+static const struct msm_rpm_reg pm8941_ldo21 = { .desc.name = "pm8941_ldo21", .resource = MSM_RPM_PM8941_L21 };
 static const struct msm_rpm_reg pm8941_ldo22 = { .desc.name = "pm8941_ldo22", .resource = MSM_RPM_PM8941_L22 };
+static const struct msm_rpm_reg pm8941_ldo23 = { .desc.name = "pm8941_ldo23", .resource = MSM_RPM_PM8941_L23 };
+static const struct msm_rpm_reg pm8941_ldo24 = { .desc.name = "pm8941_ldo24", .resource = MSM_RPM_PM8941_L24 };
 
 static const struct of_device_id rpm_of_match[] = {
 	{ .compatible = "qcom,pm8841-s1", .data = &pm8841_s1 },
 	{ .compatible = "qcom,pm8841-s2", .data = &pm8841_s2 },
+
 	{ .compatible = "qcom,pm8941-s1", .data = &pm8941_s1 },
 	{ .compatible = "qcom,pm8941-s2", .data = &pm8941_s2 },
 	{ .compatible = "qcom,pm8941-s3", .data = &pm8941_s3 },
-	{ .compatible = "qcom,pm8941-ldo3", .data = &pm8941_ldo3 },
-	{ .compatible = "qcom,pm8941-ldo6", .data = &pm8941_ldo6 },
-	{ .compatible = "qcom,pm8941-ldo9", .data = &pm8941_ldo9 },
+
+	{ .compatible = "qcom,pm8941-ldo1",  .data = &pm8941_ldo1 },
+	{ .compatible = "qcom,pm8941-ldo2",  .data = &pm8941_ldo2 },
+	{ .compatible = "qcom,pm8941-ldo3",  .data = &pm8941_ldo3 },
+	{ .compatible = "qcom,pm8941-ldo4",  .data = &pm8941_ldo4 },
+	{ .compatible = "qcom,pm8941-ldo5",  .data = &pm8941_ldo5 },
+	{ .compatible = "qcom,pm8941-ldo6",  .data = &pm8941_ldo6 },
+	{ .compatible = "qcom,pm8941-ldo7",  .data = &pm8941_ldo7 },
+	{ .compatible = "qcom,pm8941-ldo8",  .data = &pm8941_ldo8 },
+	{ .compatible = "qcom,pm8941-ldo9",  .data = &pm8941_ldo9 },
+	{ .compatible = "qcom,pm8941-ldo10", .data = &pm8941_ldo10 },
 	{ .compatible = "qcom,pm8941-ldo11", .data = &pm8941_ldo11 },
+	{ .compatible = "qcom,pm8941-ldo12", .data = &pm8941_ldo12 },
+	{ .compatible = "qcom,pm8941-ldo13", .data = &pm8941_ldo13 },
+	{ .compatible = "qcom,pm8941-ldo14", .data = &pm8941_ldo14 },
+	{ .compatible = "qcom,pm8941-ldo15", .data = &pm8941_ldo15 },
+	{ .compatible = "qcom,pm8941-ldo16", .data = &pm8941_ldo16 },
+	{ .compatible = "qcom,pm8941-ldo17", .data = &pm8941_ldo17 },
+	{ .compatible = "qcom,pm8941-ldo18", .data = &pm8941_ldo18 },
 	{ .compatible = "qcom,pm8941-ldo19", .data = &pm8941_ldo19 },
 	{ .compatible = "qcom,pm8941-ldo20", .data = &pm8941_ldo20 },
+	{ .compatible = "qcom,pm8941-ldo21", .data = &pm8941_ldo21 },
 	{ .compatible = "qcom,pm8941-ldo22", .data = &pm8941_ldo22 },
+	{ .compatible = "qcom,pm8941-ldo23", .data = &pm8941_ldo23 },
+	{ .compatible = "qcom,pm8941-ldo24", .data = &pm8941_ldo24 },
 };
 MODULE_DEVICE_TABLE(of, rpm_of_match);
 
