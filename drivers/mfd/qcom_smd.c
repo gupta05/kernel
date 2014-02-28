@@ -142,6 +142,8 @@ struct smd_alloc_elm {
 #define SMD_SS_RESET             0x00000005
 #define SMD_SS_RESET_OPENING     0x00000006
 
+static int qcom_smd_scan_channels(struct qcom_smem *smem);
+
 /*
  * Resolves the address and size of smem_id.
  *
@@ -485,6 +487,8 @@ qcom_smd_register_device(struct qcom_smem *smem, struct qcom_smem_child *child, 
 
 	qcom_smd_signal_channel(channel);
 
+	dev_err(smem->dev, "Registered %s\n", name);
+
 	return channel;
 }
 
@@ -520,6 +524,20 @@ static int qcom_smd_scan_channels(struct qcom_smem *smem)
 
 	return 0;
 }
+
+static ssize_t qcom_smd_rescan_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	struct qcom_smem *smem = dev_get_drvdata(dev);
+	qcom_smd_scan_channels(smem);
+
+	return size;
+}
+
+static const struct device_attribute qcom_smd_rescan[] = {
+	__ATTR(rescan, S_IWUSR, 0, qcom_smd_rescan_store),
+};
 
 static int qcom_smd_probe(struct platform_device *pdev)
 {
@@ -559,6 +577,12 @@ static int qcom_smd_probe(struct platform_device *pdev)
 		return PTR_ERR(smem->hwlock);
 
 	dev_set_drvdata(&pdev->dev, smem);
+
+	ret = device_create_file(&pdev->dev, &qcom_smd_rescan[0]);
+	if (ret) {
+		dev_err(&pdev->dev, "Unable to create sysfs file\n");
+		return ret;
+	}
 
 	count = of_get_child_count(pdev->dev.of_node);
 	smem->children = devm_kcalloc(&pdev->dev, sizeof(struct qcom_smem_child), count, GFP_KERNEL);
