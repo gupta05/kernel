@@ -92,16 +92,35 @@ struct rpm_message_header {
 static const struct qcom_smd_rpm_resource rpm8x74_resource_table[] = {
 	[MSM_RPM_PM8841_S1] = { .resource_type = RESOURCE_TYPE_SMPB, .resource_id = 1 },
 	[MSM_RPM_PM8841_S2] = { .resource_type = RESOURCE_TYPE_SMPB, .resource_id = 2 },
+
 	[MSM_RPM_PM8941_S1] = { .resource_type = RESOURCE_TYPE_SMPA, .resource_id = 1 },
 	[MSM_RPM_PM8941_S2] = { .resource_type = RESOURCE_TYPE_SMPA, .resource_id = 2 },
 	[MSM_RPM_PM8941_S3] = { .resource_type = RESOURCE_TYPE_SMPA, .resource_id = 3 },
-	[MSM_RPM_PM8941_L3] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 3 },
-	[MSM_RPM_PM8941_L6] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 6 },
-	[MSM_RPM_PM8941_L9] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 9 },
+
+	[MSM_RPM_PM8941_L1] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 1 },
+	[MSM_RPM_PM8941_L2] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 2 },
+	[MSM_RPM_PM8941_L3] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 3 },
+	[MSM_RPM_PM8941_L4] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 4 },
+	[MSM_RPM_PM8941_L5] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 5 },
+	[MSM_RPM_PM8941_L6] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 6 },
+	[MSM_RPM_PM8941_L7] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 7 },
+	[MSM_RPM_PM8941_L8] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 8 },
+	[MSM_RPM_PM8941_L9] =  { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 9 },
+	[MSM_RPM_PM8941_L10] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 10 },
 	[MSM_RPM_PM8941_L11] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 11 },
+	[MSM_RPM_PM8941_L12] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 12 },
+	[MSM_RPM_PM8941_L13] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 13 },
+	[MSM_RPM_PM8941_L14] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 14 },
+	[MSM_RPM_PM8941_L15] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 15 },
+	[MSM_RPM_PM8941_L16] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 16 },
+	[MSM_RPM_PM8941_L17] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 17 },
+	[MSM_RPM_PM8941_L18] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 18 },
 	[MSM_RPM_PM8941_L19] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 19 },
 	[MSM_RPM_PM8941_L20] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 20 },
+	[MSM_RPM_PM8941_L21] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 21 },
 	[MSM_RPM_PM8941_L22] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 22 },
+	[MSM_RPM_PM8941_L23] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 23 },
+	[MSM_RPM_PM8941_L24] = { .resource_type = RESOURCE_TYPE_LDOA, .resource_id = 24 },
 };
 
 static const struct qcom_smd_rpm rpm8x74_template = {
