@@ -5,6 +5,18 @@
 	model = "Sony Rhine CDB";
 	compatible = "sony,msm8974-rhine_cdb", "qcom,msm8974";
 	qcom,msm-id = <126 8 0>, <185 8 0>, <186 8 0>;
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		pronto_reserve: pronto_reserve@d200000 {
+			#memory-region-cells = <0>;
+			reg = <0xd200000 0x800000>;
+			no-map;
+		};
+	};
 };
 
 &soc {
@@ -573,6 +585,7 @@
 			qcom,irq-no-suspend;
 
 			rpm-smd {
+				qcom,smd-channels = "rpm_requests";
 				compatible = "qcom,rpm8x74-smd";
 
 				pm8841_s1: pm8841-s1 {
@@ -636,6 +649,13 @@
 
 					regulator-min-microvolt = <1300000>;
 					regulator-max-microvolt = <1300000>;
+				};
+
+				pm8941_l12: regulator-l12 {
+					compatible = "qcom,pm8941-ldo12";
+
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
 				};
 
 				pm8941_l19: regulator-l19 {
@@ -985,6 +1005,18 @@
 			nxp,gpio_irq = <&msmgpio 59 0x00>;
 		};
 	};
-};
 
+	pronto_rproc {
+		compatible = "qcom,rproc";
+		memory-region = <&pronto_reserve>;
+
+		clocks = <&gcc GCC_CE1_AHB_CLK>, <&gcc GCC_CE1_AXI_CLK>, <&gcc GCC_CE1_CLK>;
+		clock-names = "iface", "bus", "core";
+
+		qcom,rproc-name = "wcnss";
+		qcom,pas-id = <6>;
+
+		pll-supply = <&pm8941_l12>;
+	};
+};
 
