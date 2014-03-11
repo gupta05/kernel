@@ -32,6 +32,8 @@
 #define WLAN_NV_FILE               "wlan/prima/WCNSS_qcom_wlan_nv.bin"
 #define WCN36XX_AGGR_BUFFER_SIZE 64
 
+struct qcom_smd_channel;
+
 extern unsigned int wcn36xx_dbg_mask;
 
 enum wcn36xx_debug_mask {
@@ -99,11 +101,11 @@ struct nv_data {
  * @tx: sends a buffer.
  */
 struct wcn36xx_platform_ctrl_ops {
-	int (*open)(void *drv_priv, void *rsp_cb);
+	int (*open)(struct wcn36xx *wcn, int (*cb)(struct qcom_smd_channel *, void *, size_t, void *));
 	void (*close)(void);
-	int (*tx)(char *buf, size_t len);
+	int (*tx)(struct wcn36xx *wcn, char *buf, size_t len);
 	int (*get_hw_mac)(u8 *addr);
-	int (*smsm_change_state)(u32 clear_mask, u32 set_mask);
+	int (*smsm_change_state)(struct wcn36xx *wcn, u32 clear_mask, u32 set_mask);
 };
 
 /**
@@ -191,6 +193,8 @@ struct wcn36xx {
 	void __iomem		*mmio;
 
 	struct wcn36xx_platform_ctrl_ops *ctrl_ops;
+	struct qcom_smd_device *smd_device;
+	struct qcom_smd_channel *smd_channel;
 	/*
 	 * smd_buf must be protected with smd_mutex to garantee
 	 * that all messages are sent one after another

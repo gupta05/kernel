@@ -148,7 +148,7 @@ int wcn36xx_dxe_alloc_ctl_blks(struct wcn36xx *wcn)
 		goto out_err;
 
 	/* Initialize SMSM state  Clear TX Enable RING EMPTY STATE */
-	ret = wcn->ctrl_ops->smsm_change_state(
+	ret = wcn->ctrl_ops->smsm_change_state(wcn,
 		WCN36XX_SMSM_WLAN_TX_ENABLE,
 		WCN36XX_SMSM_WLAN_TX_RINGS_EMPTY);
 
@@ -665,7 +665,7 @@ int wcn36xx_dxe_tx_frame(struct wcn36xx *wcn,
 	 * notify chip about new frame through SMSM bus.
 	 */
 	if (is_low &&  vif_priv->pw_state == WCN36XX_BMPS) {
-		wcn->ctrl_ops->smsm_change_state(
+		wcn->ctrl_ops->smsm_change_state(wcn,
 				  0,
 				  WCN36XX_SMSM_WLAN_TX_ENABLE);
 	} else {
