@@ -94,6 +94,12 @@ config BT_HCIUART_3WIRE
 
 	  Say Y here to compile support for Three-wire UART protocol.
 
+config BT_HCIUART_SMD
+	bool "Qualcomm HCI SMD driver"
+	depends on MFD_QCOM_SMD
+	help
+	  HCI driver for SMD.
+
 config BT_HCIBCM203X
 	tristate "HCI BCM203x USB driver"
 	depends on USB
