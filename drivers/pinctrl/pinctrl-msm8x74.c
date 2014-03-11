@@ -410,6 +410,7 @@ enum msm8x74_functions {
 	MSM_MUX_blsp_uart2,
 	MSM_MUX_blsp_uart8,
 	MSM_MUX_slimbus,
+	MSM_MUX_wcnss,
 	MSM_MUX_NA,
 };
 
@@ -420,6 +421,7 @@ static const char * const blsp_spi1_groups[] = { "gpio0", "gpio1", "gpio2", "gpi
 static const char * const blsp_uart2_groups[] = { "gpio4", "gpio5" };
 static const char * const blsp_uart8_groups[] = { "gpio45", "gpio46" };
 static const char * const slimbus_groups[] = { "gpio70", "gpio71" };
+static const char * const wcnss_groups[] = { "gpio36", "gpio37", "gpio38", "gpio39", "gpio40" };
 
 static const struct msm_function msm8x74_functions[] = {
 	FUNCTION(blsp_i2c2),
@@ -429,6 +431,7 @@ static const struct msm_function msm8x74_functions[] = {
 	FUNCTION(blsp_uart2),
 	FUNCTION(blsp_uart8),
 	FUNCTION(slimbus),
+	FUNCTION(wcnss),
 };
 
 static const struct msm_pingroup msm8x74_groups[] = {
@@ -468,11 +471,11 @@ static const struct msm_pingroup msm8x74_groups[] = {
 	PINGROUP(33,  NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(34,  NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(35,  NA, NA, NA, NA, NA, NA, NA),
-	PINGROUP(36,  NA, NA, NA, NA, NA, NA, NA),
-	PINGROUP(37,  NA, NA, NA, NA, NA, NA, NA),
-	PINGROUP(38,  NA, NA, NA, NA, NA, NA, NA),
-	PINGROUP(39,  NA, NA, NA, NA, NA, NA, NA),
-	PINGROUP(40,  NA, NA, NA, NA, NA, NA, NA),
+	PINGROUP(36,  wcnss, NA, NA, NA, NA, NA, NA),
+	PINGROUP(37,  wcnss, NA, NA, NA, NA, NA, NA),
+	PINGROUP(38,  wcnss, NA, NA, NA, NA, NA, NA),
+	PINGROUP(39,  wcnss, NA, NA, NA, NA, NA, NA),
+	PINGROUP(40,  wcnss, NA, NA, NA, NA, NA, NA),
 	PINGROUP(41,  NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(42,  NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(43,  NA, NA, NA, NA, NA, NA, NA),
