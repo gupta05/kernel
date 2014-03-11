@@ -26,7 +26,8 @@
 struct qcom_smd_rpm_resource;
 
 struct qcom_smd_rpm {
-	struct qcom_smd_device *dev;
+	struct device *dev;
+	struct qcom_smd_channel *rpm_channel;
 
 	struct completion ack;
 	unsigned ack_status;
@@ -171,7 +172,7 @@ int qcom_rpm_smd_write(const struct device *dev, int resource, void *buf, size_t
 #if 0
 	print_hex_dump(KERN_DEBUG, "rpm-write", DUMP_PREFIX_OFFSET, 16, 4, &pkt, pkt.req.request_len, true);
 #endif
-	qcom_smd_send(rpm->dev, &pkt, sizeof(struct rpm_request_header) + pkt.req.request_len);
+	qcom_smd_send(rpm->rpm_channel, &pkt, sizeof(struct rpm_request_header) + pkt.req.request_len);
 
 	wait_for_completion(&rpm->ack);
 
@@ -202,9 +203,9 @@ struct qcom_rpm_ack_payload {
 #define RPM_ACK_PAYLOAD_ERR 0x727265 /* 'err\0' */
 #define RPM_ACK_PAYLOAD_INV_RSC "resource does not exist"
 
-static int qcom_smd_rpm_callback(struct qcom_smd_device *sdev, void *buf, size_t count)
+static int qcom_smd_rpm_callback(struct qcom_smd_channel *channel, void *buf, size_t count, void *_rpm)
 {
-	struct qcom_smd_rpm *rpm = dev_get_drvdata(&sdev->dev);
+	struct qcom_smd_rpm *rpm = _rpm;
 	struct qcom_rpm_ack_hdr *hdr = buf;
 	struct qcom_rpm_ack_msg *msg = (struct qcom_rpm_ack_msg*)(hdr + 1);
 	struct qcom_rpm_ack_payload *payload = (struct qcom_rpm_ack_payload*)(msg + 1);
@@ -220,10 +221,10 @@ static int qcom_smd_rpm_callback(struct qcom_smd_device *sdev, void *buf, size_t
 	BUG_ON(payload->unknown1 == RPM_ACK_PAYLOAD_ERR);
 
 	if (!memcmp(payload->message, RPM_ACK_PAYLOAD_INV_RSC, sizeof(RPM_ACK_PAYLOAD_INV_RSC) - 1)) {
-		dev_err(&sdev->dev, "RPM NACK: Unsupported resource: 0%x\n", msg->rsc_id);
+		dev_err(rpm->dev, "RPM NACK: Unsupported resource: 0%x\n", msg->rsc_id);
 		rpm->ack_status = -EINVAL;
 	} else {
-		dev_err(&sdev->dev, "RPM NACK: Invalid header\n");
+		dev_err(rpm->dev, "RPM NACK: Invalid header\n");
 		rpm->ack_status = -ENODEV;
 	}
 
@@ -243,9 +244,13 @@ static int qcom_smd_rpm_probe(struct qcom_smd_device *sdev)
 		dev_err(&sdev->dev, "Can't allocate msm_rpm\n");
 		return -ENOMEM;
 	}
-	rpm->dev = sdev;
+	rpm->dev = &sdev->dev;
 	mutex_init(&rpm->lock);
 	init_completion(&rpm->ack);
+
+	rpm->rpm_channel = qcom_smd_request_channel(sdev, NULL, qcom_smd_rpm_callback, rpm);
+	if (IS_ERR(rpm->rpm_channel))
+		return PTR_ERR(rpm->rpm_channel);
 
 	match = of_match_device(qcom_smd_rpm_of_match, &sdev->dev);
 	template = match->data;
@@ -259,7 +264,6 @@ static int qcom_smd_rpm_probe(struct qcom_smd_device *sdev)
 
 static struct qcom_smd_driver qcom_smd_rpm_driver = {
 	.probe = qcom_smd_rpm_probe,
-	.callback = qcom_smd_rpm_callback,
 	.driver  = {
 		.name  = "qcom_smd_rpm",
 		.owner = THIS_MODULE,
