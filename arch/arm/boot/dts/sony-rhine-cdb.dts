@@ -16,6 +16,12 @@
 			reg = <0xd200000 0x800000>;
 			no-map;
 		};
+
+		smem@fa00000 {
+			#memory-region-cells = <0>;
+			reg = <0x0fa00000 0x200000>;
+			no-map;
+		};
 	};
 };
 
@@ -492,6 +498,12 @@
 				bias-disable;
 			};
 
+			wcnss_5wire_active {
+				pins = "gpio36", "gpio37", "gpio38", "gpio39", "gpio40";
+				function = "wcnss";
+				drive-strength = <6>;
+				bias-pull-down;
+			};
 		};
 
 		uart2 {
@@ -542,13 +554,11 @@
 		};
 	};
 
-	smem@fa00000 {
-		compatible = "qcom,smem";
+	smd@fa00000 {
+		compatible = "qcom,smd";
 		reg = <0xf9011000 0x1000>,
 		      <0x0fa00000 0x200000>,
 		      <0xfc428000 0x4000>;
-
-		reserve-memory;
 
 		hwspinlocks = <&tcsr_mutex 3>;
 
@@ -576,7 +586,7 @@
 			qcom,smsm-irq-bit = <13>;
 		};
 
-		rpm_requests {
+		rpm {
 			interrupts = <0 168 1>;
 
 			qcom,smd-edge = <15>;
@@ -584,7 +594,7 @@
 			qcom,smd-irq-bit = <0>;
 			qcom,irq-no-suspend;
 
-			rpm-smd {
+			rpm_requests {
 				qcom,smd-channels = "rpm_requests";
 				compatible = "qcom,rpm8x74-smd";
 
@@ -682,7 +692,7 @@
 			};
 		};
 
-		wcnss_channel {
+		pronto {
 			interrupts = <0 142 1>, <0 144 1>;
 
 			qcom,smd-edge = <6>;
@@ -696,26 +706,23 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			qcom,wcnss-wlan@fb000000 {
-				compatible = "qcom,wcnss_wlan";
-				reg = <0xfb000000 0x280000>,
-				      <0xf9011008 0x04>;
-				reg-names = "wcnss_mmio", "wcnss_fiq";
+			bt {
+				compatible = "qcom,hci-smd";
+				qcom,asmd-channels = "APPS_RIVA_BT_CMD", "APPS_RIVA_BT_ACL";
+				qcom,smd-channel-names = "event", "data";
+			};
+
+			wifi {
+				compatible = "qcom,wcn3680";
+
+				qcom,smd-channels = "WLAN_CTRL";
+
 				interrupts = <0 145 0 0 146 0>;
 				interrupt-names = "wcnss_wlantx_irq", "wcnss_wlanrx_irq";
 
-				qcom,pronto-vddmx-supply = <&pm8841_s1>;
-				qcom,pronto-vddcx-supply = <&pm8841_s2>;
-				qcom,pronto-vddpx-supply = <&pm8941_s3>;
-				qcom,iris-vddxo-supply = <&pm8941_l6>;
-				qcom,iris-vddrfa-supply = <&pm8941_l11>;
-				qcom,iris-vddpa-supply = <&pm8941_l19>;
-				qcom,iris-vdddig-supply = <&pm8941_l3>;
-
-				gpios = <&msmgpio 36 0>, <&msmgpio 37 0>, <&msmgpio 38 0>, <&msmgpio 39 0>, <&msmgpio 40 0>;
-				qcom,has-48mhz-xo;
-				qcom,has-pronto-hw;
+				qcom,wcnss_mmio = <0xfb000000 0x280000>;
 			};
+
 		};
 	};
 
