@@ -195,10 +195,10 @@ static void wcn36xx_smd_set_sta_params(struct wcn36xx *wcn,
 static int wcn36xx_smd_send_and_wait(struct wcn36xx *wcn, size_t len)
 {
 	int ret = 0;
-	wcn36xx_dbg_dump(WCN36XX_DBG_SMD_DUMP, "HAL >>> ", wcn->hal_buf, len);
+	wcn36xx_dbg_dump(WCN36XX_DBG_SMD_DUMP, "HAL >>> ", wcn->hal_buf, min_t(size_t, len, 32));
 
 	init_completion(&wcn->hal_rsp_compl);
-	ret = wcn->ctrl_ops->tx(wcn->hal_buf, len);
+	ret = wcn->ctrl_ops->tx(wcn, wcn->hal_buf, len);
 	if (ret) {
 		wcn36xx_err("HAL TX failed\n");
 		goto out;
@@ -323,6 +323,7 @@ static int wcn36xx_smd_start_rsp(struct wcn36xx *wcn, void *buf, size_t len)
 
 	rsp = (struct wcn36xx_hal_mac_start_rsp_msg *)buf;
 
+	pr_err("%d %d\n", WCN36XX_FW_MSG_RESULT_SUCCESS, rsp->start_rsp_params.status);
 	if (WCN36XX_FW_MSG_RESULT_SUCCESS != rsp->start_rsp_params.status)
 		return -EIO;
 
@@ -2011,8 +2012,10 @@ out:
 	mutex_unlock(&wcn->hal_mutex);
 	return ret;
 }
-static void wcn36xx_smd_rsp_process(struct wcn36xx *wcn, void *buf, size_t len)
+
+static int wcn36xx_smd_rsp_process(struct qcom_smd_channel *channel, void *buf, size_t len, void *_wcn)
 {
+	struct wcn36xx *wcn = _wcn;
 	struct wcn36xx_hal_msg_header *msg_header = buf;
 	struct wcn36xx_hal_ind_msg *msg_ind;
 	wcn36xx_dbg_dump(WCN36XX_DBG_SMD_DUMP, "SMD <<< ", buf, len);
@@ -2087,6 +2090,8 @@ nomem:
 		wcn36xx_err("SMD_EVENT (%d) not supported\n",
 			      msg_header->msg_type);
 	}
+
+	return 0;
 }
 static void wcn36xx_ind_smd_work(struct work_struct *work)
 {
