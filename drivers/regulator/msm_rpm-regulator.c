@@ -21,13 +21,16 @@
 
 #include <linux/mfd/msm_rpm.h>
 
+struct rpm_vreg_parts;
+struct vreg_range;
+
 struct msm_rpm_reg {
 	struct mutex lock;
 	struct device *dev;
 	struct regulator_desc desc;
 
-	const struct rpm_reg_parts *parts;
-	struct vreg_range *ranges;
+	const struct rpm_vreg_parts *parts;
+	const struct vreg_range *ranges;
 	int n_ranges;
 
 	const int resource;
@@ -48,13 +51,13 @@ struct msm_rpm_reg {
 }
 
 struct request_member {
-	int                     word;
-	unsigned int            mask;
-	int                     shift;
+	int		word;
+	unsigned int	mask;
+	int		shift;
 };
 
 /* Possible RPM regulator request members */
-struct rpm_reg_parts {
+struct rpm_vreg_parts {
 	struct request_member   mV;     /* voltage: used if voltage is in mV */
 	struct request_member   uV;     /* voltage: used if voltage is in uV */
 	struct request_member   ip;             /* peak current in mA */
@@ -101,21 +104,131 @@ struct vreg_range {
 #define RPM_VREG_8960_SMPS_2000_HPM_MIN_LOAD            100000
 
 /*
- * 8960
+ * Physically available PMIC regulator voltage setpoint ranges
  */
-static struct vreg_range pldo_ranges[] = {
+static const struct vreg_range pldo_ranges[] = {
 	VOLTAGE_RANGE( 750000, 1487500, 12500),
 	VOLTAGE_RANGE(1500000, 3075000, 25000),
 	VOLTAGE_RANGE(3100000, 4900000, 50000),
 };
 
-static const struct rpm_reg_parts msm8960_ldo_parts = {
+static const struct vreg_range nldo_ranges[] = {
+	VOLTAGE_RANGE( 750000, 1537500, 12500),
+};
+
+static const struct vreg_range nldo1200_ranges[] = {
+	VOLTAGE_RANGE( 375000,  743750,  6250),
+	VOLTAGE_RANGE( 750000, 1537500, 12500),
+};
+
+static const struct vreg_range ln_ldo_ranges[] = {
+	VOLTAGE_RANGE( 690000, 1110000,  60000),
+	VOLTAGE_RANGE(1380000, 2220000, 120000),
+};
+
+static const struct vreg_range smps_ranges[] = {
+	VOLTAGE_RANGE( 375000,  737500, 12500),
+	VOLTAGE_RANGE( 750000, 1487500, 12500),
+	VOLTAGE_RANGE(1500000, 3075000, 25000),
+};
+
+static const struct vreg_range ftsmps_ranges[] = {
+	VOLTAGE_RANGE( 350000,  650000, 50000),
+	VOLTAGE_RANGE( 700000, 1400000, 12500),
+	VOLTAGE_RANGE(1500000, 3300000, 50000),
+};
+
+static const struct vreg_range ncp_ranges[] = {
+	VOLTAGE_RANGE(1500000, 3050000, 50000),
+};
+
+/*
+ * RPM regulator request formats for MSM8660
+ */
+static const struct rpm_vreg_parts ldo_parts_8660 = {
+	.request_len    = 2,
+	.mV             = REQUEST_MEMBER(0, 0x00000FFF,  0),
+	.ip             = REQUEST_MEMBER(0, 0x00FFF000, 12),
+	.fm             = REQUEST_MEMBER(0, 0x03000000, 24),
+	.pc             = REQUEST_MEMBER(0, 0x3C000000, 26),
+	.pf             = REQUEST_MEMBER(0, 0xC0000000, 30),
+	.pd             = REQUEST_MEMBER(1, 0x00000001,  0),
+	.ia             = REQUEST_MEMBER(1, 0x00001FFE,  1),
+};
+
+static const struct rpm_vreg_parts smps_parts_8660 = {
+	.request_len    = 2,
+	.mV             = REQUEST_MEMBER(0, 0x00000FFF,  0),
+	.ip             = REQUEST_MEMBER(0, 0x00FFF000, 12),
+	.fm             = REQUEST_MEMBER(0, 0x03000000, 24),
+	.pc             = REQUEST_MEMBER(0, 0x3C000000, 26),
+	.pf             = REQUEST_MEMBER(0, 0xC0000000, 30),
+	.pd             = REQUEST_MEMBER(1, 0x00000001,  0),
+	.ia             = REQUEST_MEMBER(1, 0x00001FFE,  1),
+	.freq           = REQUEST_MEMBER(1, 0x001FE000, 13),
+	.freq_clk_src   = REQUEST_MEMBER(1, 0x00600000, 21),
+};
+
+static const struct rpm_vreg_parts switch_parts_8660 = {
+	.request_len    = 1,
+	.enable_state   = REQUEST_MEMBER(0, 0x00000001,  0),
+	.pd             = REQUEST_MEMBER(0, 0x00000002,  1),
+	.pc             = REQUEST_MEMBER(0, 0x0000003C,  2),
+	.pf             = REQUEST_MEMBER(0, 0x000000C0,  6),
+	.hpm            = REQUEST_MEMBER(0, 0x00000300,  8),
+};
+
+static const struct rpm_vreg_parts ncp_parts_8660 = {
+	.request_len    = 1,
+	.mV             = REQUEST_MEMBER(0, 0x00000FFF,  0),
+	.enable_state   = REQUEST_MEMBER(0, 0x00001000, 12),
+	.comp_mode      = REQUEST_MEMBER(0, 0x00002000, 13),
+	.freq           = REQUEST_MEMBER(0, 0x003FC000, 14),
+};
+
+/*
+ * RPM regulator request formats for MSM8960 and APQ8064
+ */
+static const struct rpm_vreg_parts ldo_parts_8960 = {
 	.request_len    = 2,
 	.uV             = REQUEST_MEMBER(0, 0x007FFFFF,  0),
 	.pd             = REQUEST_MEMBER(0, 0x00800000, 23),
+	.pc             = REQUEST_MEMBER(0, 0x0F000000, 24),
+	.pf             = REQUEST_MEMBER(0, 0xF0000000, 28),
 	.ip             = REQUEST_MEMBER(1, 0x000003FF,  0),
 	.ia             = REQUEST_MEMBER(1, 0x000FFC00, 10),
 	.fm             = REQUEST_MEMBER(1, 0x00700000, 20),
+};
+
+static const struct rpm_vreg_parts smps_parts_8960 = {
+	.request_len    = 2,
+	.uV             = REQUEST_MEMBER(0, 0x007FFFFF,  0),
+	.pd             = REQUEST_MEMBER(0, 0x00800000, 23),
+	.pc             = REQUEST_MEMBER(0, 0x0F000000, 24),
+	.pf             = REQUEST_MEMBER(0, 0xF0000000, 28),
+	.ip             = REQUEST_MEMBER(1, 0x000003FF,  0),
+	.ia             = REQUEST_MEMBER(1, 0x000FFC00, 10),
+	.fm             = REQUEST_MEMBER(1, 0x00700000, 20),
+	.pm             = REQUEST_MEMBER(1, 0x00800000, 23),
+	.freq           = REQUEST_MEMBER(1, 0x1F000000, 24),
+	.freq_clk_src   = REQUEST_MEMBER(1, 0x60000000, 29),
+};
+
+static const struct rpm_vreg_parts switch_parts_8960 = {
+	.request_len    = 1,
+	.enable_state   = REQUEST_MEMBER(0, 0x00000001,  0),
+	.pd             = REQUEST_MEMBER(0, 0x00000002,  1),
+	.pc             = REQUEST_MEMBER(0, 0x0000003C,  2),
+	.pf             = REQUEST_MEMBER(0, 0x000003C0,  6),
+	.hpm            = REQUEST_MEMBER(0, 0x00000C00, 10),
+};
+
+static const struct rpm_vreg_parts ncp_parts_8960 = {
+	.request_len    = 1,
+	.uV             = REQUEST_MEMBER(0, 0x007FFFFF,  0),
+	.enable_state   = REQUEST_MEMBER(0, 0x00800000, 23),
+	.comp_mode      = REQUEST_MEMBER(0, 0x01000000, 24),
+	.freq           = REQUEST_MEMBER(0, 0x3E000000, 25),
 };
 
 static const struct msm_rpm_reg msm8960_ldo16 = {
@@ -124,7 +237,7 @@ static const struct msm_rpm_reg msm8960_ldo16 = {
 	.desc.name = "pm8921_ldo16",
 	.ranges = pldo_ranges,
 	.n_ranges = ARRAY_SIZE(pldo_ranges),
-	.parts = &msm8960_ldo_parts,
+	.parts = &ldo_parts_8960,
 	.hpm_min_load = RPM_VREG_8960_LDO_300_HPM_MIN_LOAD,
 };
 
@@ -149,7 +262,7 @@ static int rpm_reg_write(struct msm_rpm_reg *vreg,
 static int rpm_reg_enable(struct regulator_dev *rdev)
 {
 	struct msm_rpm_reg *vreg = rdev_get_drvdata(rdev);
-	const struct rpm_reg_parts *parts = vreg->parts;
+	const struct rpm_vreg_parts *parts = vreg->parts;
 	int ret;
 
 	mutex_lock(&vreg->lock);
@@ -171,7 +284,7 @@ static int rpm_reg_is_enabled(struct regulator_dev *rdev)
 static int rpm_reg_disable(struct regulator_dev *rdev)
 {
 	struct msm_rpm_reg *vreg = rdev_get_drvdata(rdev);
-	const struct rpm_reg_parts *parts = vreg->parts;
+	const struct rpm_vreg_parts *parts = vreg->parts;
 	int ret;
 
 	mutex_lock(&vreg->lock);
@@ -187,8 +300,8 @@ static int rpm_reg_set_voltage(struct regulator_dev *rdev, int min_uV, int max_u
 			       unsigned *selector)
 {
 	struct msm_rpm_reg *vreg = rdev_get_drvdata(rdev);
-	const struct rpm_reg_parts *parts = vreg->parts;
-	struct vreg_range *range = NULL;
+	const struct rpm_vreg_parts *parts = vreg->parts;
+	const struct vreg_range *range = NULL;
 	int ret = 0;
 	int uV;
 	int i;
@@ -218,7 +331,7 @@ static int rpm_reg_set_voltage(struct regulator_dev *rdev, int min_uV, int max_u
 
 	uV = roundup(uV, range->step_uV);
 
-	dev_err(vreg->dev, "snapped voltage %duV\n", uV);
+	dev_dbg(vreg->dev, "snapped voltage %duV\n", uV);
 
 	/*
 	 * Update the register.
