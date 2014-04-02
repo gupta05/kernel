@@ -100,6 +100,20 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_BROKEN_HOST_CONTROL		(1<<5)
 /* Controller does not support HS200 */
 #define SDHCI_QUIRK2_BROKEN_HS200			(1<<6)
+/* Controller cannot de-assert Read/Write Transfer Active after transaction */
+#define SDHCI_QUIRK2_RDWR_TX_ACTIVE_EOT			(1<<7)
+/* Controller clears interrupt slowly and IRQ handler may be called twice */
+#define SDHCI_QUIRK2_SLOW_INT_CLR			(1<<8)
+/* Ignore CMD CRC errors for tuning commands */
+#define SDHCI_QUIRK2_IGNORE_CMDCRC_FOR_TUNING		(1<<9)
+/* Dont use the max_discard_to so that the maximum discard unit gets picked by
+ * the mmc queue. Otherwise, it takes a long time for secure discard kind of
+ * operations to complete. */
+#define SDHCI_QUIRK2_USE_MAX_DISCARD_SIZE		(1<<10)
+/* Ignore data timeout error for R1B commands as there will be no data
+ * associated and the busy timeout value for these commands could be larger
+ * than the maximum timeout value that controller can handle. */
+#define SDHCI_QUIRK2_IGNORE_DATATOUT_FOR_R1BCMD		(1<<11)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
