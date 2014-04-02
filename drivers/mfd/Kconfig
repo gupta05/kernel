@@ -497,6 +497,16 @@ config MFD_PM8XXX_IRQ
 	  This is required to use certain other PM 8xxx features, such as GPIO
 	  and MPP.
 
+config MFD_PM8X41
+	bool "Qualcomm PM8X41 PMIC"
+	depends on ARCH_MSM
+	select REGMAP_SPMI
+	help
+	  This enables basic support for the Qualcomm 8941 and 8841 PMICs.  These
+	  PMICs are currently used with the Snapdragon 800 series of SoCs.  Note, that
+	  this will only be useful paired with descriptions of the independent functions
+	  as children nodes in the device tree.
+
 config MFD_RDC321X
 	tristate "RDC R-321x southbridge"
 	select MFD_CORE
