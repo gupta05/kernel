@@ -26,7 +26,7 @@
 #include <linux/slab.h>
 #include <linux/regulator/consumer.h>
 
-#include "../../arch/arm/mach-msm/scm.h"
+#include "../../arch/arm/mach-qcom/scm.h"
 
 extern int scm_is_call_available(u32 svc_id, u32 cmd_id);
 
