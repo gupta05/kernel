@@ -10,7 +10,7 @@ menu "Hardware Spinlock drivers"
 
 config HWSPINLOCK_MSM
 	tristate "MSM Hardware Spinlock device"
-	depends on ARCH_MSM
+	depends on ARCH_QCOM
 	select HWSPINLOCK
 	help
 	  Say y here to support the MSM Hardware Mutex functionality, which
