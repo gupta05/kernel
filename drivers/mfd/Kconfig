@@ -504,7 +504,7 @@ config MFD_PM8921_CORE
 
 config MFD_PM8X41
 	bool "Qualcomm PM8X41 PMIC"
-	depends on ARCH_MSM
+	depends on ARCH_QCOM
 	select REGMAP_SPMI
 	help
 	  This enables basic support for the Qualcomm 8941 and 8841 PMICs.  These
