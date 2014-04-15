@@ -822,36 +822,22 @@
 	};
 
 	sdhc1: sdhc@f9824900 {
-		compatible = "qcom,sdhci-msm";
+		compatible = "qcom,sdhci-msm-v4";
 		reg = <0xf9824900 0x11c>, <0xf9824000 0x800>;
-		reg-names = "hc_mem", "core_mem";
-		interrupts = <0 123 0>, <0 138 0>;
-		interrupt-names = "hc_irq", "pwr_irq";
-		rdwr-tx-active-eot;
-		use-max-discard-size;
-		ignore-cmdcrc-for-tuning;
-		ignore-datatout-for-r1bcmd;
-		slow-int-clr;
-		no-auto-hs200;
+
+		interrupts = <0 123 0>;
+
+		bus-width = <8>;
 		non-removable;
 
-		vdd-supply = <&pm8941_l20>;
-		qcom,vdd-always-on;
-		qcom,vdd-lpm-sup;
-		qcom,vdd-voltage-level = <2950000 2950000>;
-		qcom,vdd-current-level = <800 500000>;
-
-		vddio-supply = <&pm8941_s3>;
-		qcom,vddio-always-on;
-		qcom,vddio-voltage-level = <1800000 1800000>;
-		qcom,vddio-current-level = <250 154000>;
-		qcom,bus-speed-mode = "DDR_1p8v";
+		vmmc-supply = <&pm8941_l20>;
+		vqmmc-supply = <&pm8941_s3>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdc1_clk_mux &sdc1_cmd_mux &sdc1_data_mux>;
 
-		clocks = <&gcc GCC_SDCC1_AHB_CLK>, <&gcc GCC_SDCC1_APPS_CLK>;
-		clock-names = "iface", "core";
+		clocks = <&gcc GCC_SDCC1_APPS_CLK>, <&gcc GCC_SDCC1_AHB_CLK>;
+		clock-names = "core", "iface";
 	};
 
 	gpio_keys {
