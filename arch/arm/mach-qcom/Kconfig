@@ -30,4 +30,7 @@ endmenu
 config QCOM_SCM
 	bool
 
+config MSM_HAS_DEBUG_UART_HS
+	bool
+
 endif
