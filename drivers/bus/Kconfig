@@ -43,6 +43,12 @@ config OMAP_INTERCONNECT
 	help
 	  Driver to enable OMAP interconnect error handling driver.
 
+config QCOM_SMEM
+	tristate "Qualcomm Shared Memory Interface"
+	depends on ARCH_QCOM
+	help
+	  Driver for the Qualcomm Shared Memory Interface.
+
 config ARM_CCI
 	bool "ARM CCI driver support"
 	depends on ARM && OF && CPU_V7

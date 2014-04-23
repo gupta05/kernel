@@ -23,6 +23,7 @@
 #include <linux/of_irq.h>
 #include <linux/qcom_smd.h>
 #include <linux/hwspinlock.h>
+#include <linux/qcom_smem.h>
 
 #include <linux/delay.h>
 
@@ -110,7 +111,7 @@ struct qcom_smd_lookup {
 struct qcom_smd {
 	struct device *dev;
 
-	struct hwspinlock *hwlock;
+	struct qcom_smem *smem;
 
 	void __iomem *base;
 	void __iomem *aux_base;
@@ -163,37 +164,6 @@ struct smd_shared_v2_word_access {
 	struct smd_half_channel_word_access ch1;
 };
 
-struct smem_proc_comm {
-	unsigned command;
-	unsigned status;
-	unsigned data1;
-	unsigned data2;
-};
-
-struct smem_heap_info {
-	unsigned initialized;
-	unsigned free_offset;
-	unsigned heap_remaining;
-	unsigned reserved;
-};
-
-struct smem_heap_entry {
-	unsigned allocated;
-	unsigned offset;
-	unsigned size;
-	unsigned reserved; /* bits 1:0 reserved, bits 31:2 aux smem base addr */
-};
-#define BASE_ADDR_MASK 0xfffffffc
-
-#define SMD_HEAP_SIZE 512
-
-struct smem_shared {
-	struct smem_proc_comm proc_comm[4];
-	unsigned version[32];
-	struct smem_heap_info heap_info;
-	struct smem_heap_entry heap_toc[SMD_HEAP_SIZE];
-};
-
 /* 'type' field of smd_alloc_elm structure
  * has the following breakup
  * bits 0-7   -> channel type
@@ -220,45 +190,6 @@ struct smd_alloc_elm {
 #define SMD_SS_CLOSING           0x00000004
 #define SMD_SS_RESET             0x00000005
 #define SMD_SS_RESET_OPENING     0x00000006
-
-/*
- * Resolves the address and size of smem_id.
- *
- * The shared memory remote spinlock must be held when calling this function.
- */
-static int smem_find(struct qcom_smd *smd, int smem_id, void **ptr, size_t *size)
-{
-	struct smem_shared *shared = smd->base;
-	struct smem_heap_entry *toc = shared->heap_toc;
-	struct smem_heap_entry *entry;
-	unsigned long flags;
-	int ret;
-
-	ret = hwspin_lock_timeout_irqsave(smd->hwlock, 100, &flags);
-	if (ret)
-		return ret;
-
-	entry = &toc[smem_id];
-
-	if (!entry->allocated) {
-		ret = -EIO;
-		goto out;
-	}
-
-	if (ptr != NULL) {
-		if (entry->reserved)
-			*ptr = smd->aux_base + entry->offset;
-		else
-			*ptr = smd->base + entry->offset;
-	}
-	if (size != NULL)
-		*size = entry->size;
-
-out:
-	hwspin_unlock_irqrestore(smd->hwlock, &flags);
-
-	return ret;
-}
 
 static int qcom_smd_dev_match(struct device *dev, struct device_driver *drv)
 {
@@ -600,7 +531,7 @@ static struct qcom_smd_channel *qcom_smd_alloc_channel(struct qcom_smd *smd,
 	channel->smd = smd;
 	channel->edge = edge;
 
-	smem_find(smd, SMEM_SMD_BASE_ID + channel_idx, (void**)&info, &info_size);
+	qcom_smem_get(smd->smem, SMEM_SMD_BASE_ID + channel_idx, (void**)&info, &info_size);
 	if (info_size == sizeof(struct smd_shared_v2_word_access)) {
 		channel->tx_info_word = &((struct smd_shared_v2_word_access*)info)->ch0;
 		channel->rx_info_word = &((struct smd_shared_v2_word_access*)info)->ch1;
@@ -614,7 +545,7 @@ static struct qcom_smd_channel *qcom_smd_alloc_channel(struct qcom_smd *smd,
 		return ERR_PTR(-EINVAL);
 	}
 
-	smem_find(smd, SMEM_SMD_FIFO_BASE_ID + channel_idx, &fifo_base, &fifo_size);
+	qcom_smem_get(smd->smem, SMEM_SMD_FIFO_BASE_ID + channel_idx, &fifo_base, &fifo_size);
 	/* Each channel uses half the fifo */
 	fifo_size /= 2;
 
@@ -645,7 +576,7 @@ static void qcom_smsm_try_open(struct qcom_smd *smd)
 	if (smd->shared_state)
 		return;
 
-	ret = smem_find(smd, SMEM_SMSM_SHARED_STATE, &mem, &size);
+	ret = qcom_smem_get(smd->smem, SMEM_SMSM_SHARED_STATE, &mem, &size);
 	if (ret < 0)
 		return;
 
@@ -756,7 +687,7 @@ static void qcom_channel_scan_worker(struct work_struct *work)
 	int ret;
 	int i;
 
-	ret = smem_find(smd, SMEM_CHANNEL_ALLOC_TBL, (void**)&elm, NULL);
+	ret = qcom_smem_get(smd->smem, SMEM_CHANNEL_ALLOC_TBL, (void**)&elm, NULL);
 	if (ret < 0) {
 		dev_err(smd->dev, "%d is not allocated\n", SMEM_CHANNEL_ALLOC_TBL);
 		return;
@@ -946,7 +877,7 @@ static int qcom_smd_probe(struct platform_device *pdev)
 	struct qcom_smd_edge *edge;
 	struct device_node *node;
 	struct qcom_smd *smd;
-	struct resource *res;
+	u32 signal_base[2];
 	int count;
 	int ret;
 	int i = 0;
@@ -958,24 +889,21 @@ static int qcom_smd_probe(struct platform_device *pdev)
 	}
 	smd->dev = &pdev->dev;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	smd->signal_base = devm_ioremap_nocache(&pdev->dev, res->start, resource_size(res));
+	ret = of_property_read_u32_array(pdev->dev.of_node, "qcom,signal-base", signal_base, 2);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to parse qcom,signal-base property\n");
+		return -EINVAL;
+	}
+
+	smd->smem = dev_get_qcom_smem(pdev->dev.parent);
+	if (!smd->smem) {
+		dev_err(&pdev->dev, "failed to acquire smem handle\n");
+		return -EINVAL;
+	}
+
+	smd->signal_base = devm_ioremap_nocache(&pdev->dev, signal_base[0], signal_base[1]);
 	if (!smd->signal_base)
 		return -ENOMEM;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	smd->base = devm_ioremap_nocache(&pdev->dev, res->start, resource_size(res));
-	if (!smd->base)
-		return -ENOMEM;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	smd->aux_base = devm_ioremap_nocache(&pdev->dev, res->start, resource_size(res));
-	if (!smd->aux_base)
-		return -ENOMEM;
-
-	smd->hwlock = of_hwspin_lock_request(pdev->dev.of_node, NULL);
-	if (IS_ERR(smd->hwlock))
-		return PTR_ERR(smd->hwlock);
 
 	dev_set_drvdata(&pdev->dev, smd);
 
