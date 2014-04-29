@@ -179,6 +179,14 @@ static inline u32 mmci_readl(struct mmci_host *host, u32 off)
 static inline void mmci_writel(struct mmci_host *host, u32 data, u32 off)
 {
 	writel(data, host->base + off);
+
+	/*
+	 * On QCom SD card controller, registers must be updated to the
+	 * MCLK domain so subsequent writes to this register will be ignored
+	 * for 3 clk cycles.
+	 */
+	if (host->hw_designer == AMBA_VENDOR_QCOM)
+		udelay(1 + ((3 * USEC_PER_SEC)/host->mclk));
 }
 
 static int mmci_card_busy(struct mmc_host *mmc)
