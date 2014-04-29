@@ -221,6 +221,7 @@ config PINCTRL_MSM
 	select PINMUX
 	select PINCONF
 	select GENERIC_PINCONF
+	select GPIOLIB_IRQCHIP
 
 config PINCTRL_MSM8X74
 	tristate "Qualcomm 8x74 pin controller driver"
