@@ -74,6 +74,49 @@ struct qcom_smem *dev_get_qcom_smem(struct device *dev)
 	return dev_get_drvdata(dev);
 }
 
+int qcom_smem_alloc(struct qcom_smem *smem, int smem_id, size_t size)
+{
+	struct smem_shared *shared = smem->base;
+	struct smem_heap_entry *toc = shared->heap_toc;
+	struct smem_heap_entry *entry;
+	unsigned long flags;
+	int ret;
+
+	size = ALIGN(size, 8);
+
+	ret = hwspin_lock_timeout_irqsave(smem->hwlock, 100, &flags);
+	if (ret) {
+		dev_err(smem->dev, "failed to lock mutex\n");
+		return ret;
+	}
+
+	entry = &toc[smem_id];
+	if (entry->allocated) {
+		ret = -EEXIST;
+		goto out;
+	}
+
+	if (size > shared->heap_info.heap_remaining) {
+		dev_err(smem->dev, "unable to allocate %d bytes from smem heap\n", size);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	entry->offset = shared->heap_info.free_offset;
+	entry->size = size;
+	entry->allocated = 1;
+
+	shared->heap_info.free_offset += size;
+	shared->heap_info.heap_remaining -= size;
+
+	/* Commit the changes before we release the spin lock */
+	wmb();
+out:
+	hwspin_unlock_irqrestore(smem->hwlock, &flags);
+
+	return ret;
+}
+
 /*
  * Resolves the address and size of smem_id.
  */
