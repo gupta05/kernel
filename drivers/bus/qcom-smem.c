@@ -64,6 +64,7 @@ struct qcom_smem {
 
 	struct hwspinlock *hwlock;
 
+	void __iomem *signal_base;
 	void __iomem *base;
 	void __iomem *aux_base;
 };
@@ -109,6 +110,14 @@ out:
 
 	return ret;
 }
+EXPORT_SYMBOL(qcom_smem_get);
+
+int qcom_smem_signal(struct qcom_smem *smem, int offset, int bit)
+{
+	writel(BIT(bit), smem->signal_base + offset);
+	return 0;
+}
+EXPORT_SYMBOL(qcom_smem_signal);
 
 static int qcom_smem_probe(struct platform_device *pdev)
 {
@@ -123,11 +132,16 @@ static int qcom_smem_probe(struct platform_device *pdev)
 	smem->dev = &pdev->dev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	smem->signal_base = devm_ioremap_nocache(&pdev->dev, res->start, resource_size(res));
+	if (!smem->signal_base)
+		return -ENOMEM;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	smem->base = devm_ioremap_nocache(&pdev->dev, res->start, resource_size(res));
 	if (!smem->base)
 		return -ENOMEM;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	smem->aux_base = devm_ioremap_nocache(&pdev->dev, res->start, resource_size(res));
 	if (!smem->aux_base)
 		return -ENOMEM;

@@ -31,12 +31,9 @@
 
 #define SMEM_CHANNEL_ALLOC_TBL	13
 #define SMEM_SMD_BASE_ID	14
-#define SMEM_SMSM_SHARED_STATE	85
 #define SMEM_SMD_FIFO_BASE_ID	338
 
 #define SMEM_NUM_SMD_STREAM_CHANNELS        64
-
-#define SMSM_APPS_STATE 0
 
 struct qcom_smd_edge;
 struct smd_half_channel;
@@ -77,7 +74,6 @@ struct qcom_smd_edge {
 	struct qcom_smd *smd;
 
 	int smd_irq;
-	int smsm_irq;
 	int edge;
 
 	int signal_bit;
@@ -112,16 +108,10 @@ struct qcom_smd {
 	struct device *dev;
 
 	struct qcom_smem *smem;
-
-	void __iomem *base;
-	void __iomem *aux_base;
-	void __iomem *signal_base;
+	struct qcom_smsm *smsm;
 
 	struct qcom_smd_edge *edges;
 	unsigned n_edges;
-
-	u32 *shared_state;
-	size_t shared_state_size;
 
 	DECLARE_BITMAP(allocated, SMEM_NUM_SMD_STREAM_CHANNELS);
 };
@@ -238,12 +228,7 @@ static void qcom_smd_signal_channel(struct qcom_smd_channel *channel)
 	struct qcom_smd *smd = channel->smd;
 	struct qcom_smd_edge *edge = channel->edge;
 
-	writel(BIT(edge->signal_bit), smd->signal_base + edge->signal_offset);
-}
-
-static void qcom_smsm_signal(struct qcom_smd *smd, struct qcom_smd_edge *edge)
-{
-	writel(BIT(edge->signal_bit + 2), smd->signal_base + edge->signal_offset);
+	qcom_smem_signal(smd->smem, edge->signal_offset, edge->signal_bit);
 }
 
 static int qcom_smd_channel_reset(struct qcom_smd_channel *channel)
@@ -567,50 +552,6 @@ static void qcom_smd_release_device(struct device *dev)
 	kfree(qsdev);
 }
 
-static void qcom_smsm_try_open(struct qcom_smd *smd)
-{
-	size_t size;
-	void *mem;
-	int ret;
-
-	if (smd->shared_state)
-		return;
-
-	ret = qcom_smem_get(smd->smem, SMEM_SMSM_SHARED_STATE, &mem, &size);
-	if (ret < 0)
-		return;
-
-	dev_err(smd->dev, "SMEM_SMSM_SHARED_STATE: %d, %d\n", ret, size);
-	print_hex_dump(KERN_DEBUG, "raw data: ", DUMP_PREFIX_OFFSET, 16, 1, mem, size, true);
-
-	smd->shared_state = mem;
-	smd->shared_state_size = size;
-}
-
-int qcom_smsm_change_state(struct qcom_smd_device *qsdev, u32 clear_mask, u32 set_mask)
-{
-	struct qcom_smd *smd = qsdev->smd;
-	u32 state;
-
-	if (!smd->shared_state)
-		return -EINVAL;
-
-	dev_dbg(smd->dev, "SMSM_APPS_STATE clear 0x%x set 0x%x\n", clear_mask, set_mask);
-	print_hex_dump(KERN_DEBUG, "raw data: ", DUMP_PREFIX_OFFSET, 16, 1, smd->shared_state, smd->shared_state_size, true);
-
-	state = readl(&smd->shared_state[SMSM_APPS_STATE]);
-	state &= ~clear_mask;
-	state |= set_mask;
-	writel(state, &smd->shared_state[SMSM_APPS_STATE]);
-
-	print_hex_dump(KERN_DEBUG, "raw data: ", DUMP_PREFIX_OFFSET, 16, 1, smd->shared_state, smd->shared_state_size, true);
-
-	qcom_smsm_signal(smd, &smd->edges[smd->n_edges-1]);
-
-	return 0;
-}
-EXPORT_SYMBOL(qcom_smsm_change_state);
-
 static int qcom_smd_register_device(struct qcom_smd *smd, struct qcom_smd_lookup *lookup)
 {
 	struct qcom_smd_device *qsdev;
@@ -737,8 +678,6 @@ static void qcom_channel_scan_worker(struct work_struct *work)
 
 		qcom_smd_register_device(smd, lookup);
 	}
-
-	qcom_smsm_try_open(smd);
 }
 
 static irqreturn_t qcom_smd_edge_intr(int irq, void *data)
@@ -842,12 +781,6 @@ static int qcom_smd_parse_edge(struct device *dev, struct device_node *node, str
 		return ret;
 	}
 
-	edge->smsm_irq = irq_of_parse_and_map(node, 1);
-	if (edge->smsm_irq < 0 && edge->smsm_irq != -EINVAL) {
-		dev_err(dev, "failed to parse smsm interrupt\n");
-		return -EINVAL;
-	}
-
 	key = "qcom,smd-edge";
 	ret = of_property_read_u32(node, key, &edge->edge);
 	if (ret) {
@@ -877,7 +810,6 @@ static int qcom_smd_probe(struct platform_device *pdev)
 	struct qcom_smd_edge *edge;
 	struct device_node *node;
 	struct qcom_smd *smd;
-	u32 signal_base[2];
 	int count;
 	int ret;
 	int i = 0;
@@ -889,21 +821,17 @@ static int qcom_smd_probe(struct platform_device *pdev)
 	}
 	smd->dev = &pdev->dev;
 
-	ret = of_property_read_u32_array(pdev->dev.of_node, "qcom,signal-base", signal_base, 2);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to parse qcom,signal-base property\n");
-		return -EINVAL;
-	}
-
 	smd->smem = dev_get_qcom_smem(pdev->dev.parent);
 	if (!smd->smem) {
 		dev_err(&pdev->dev, "failed to acquire smem handle\n");
 		return -EINVAL;
 	}
 
-	smd->signal_base = devm_ioremap_nocache(&pdev->dev, signal_base[0], signal_base[1]);
-	if (!smd->signal_base)
-		return -ENOMEM;
+	smd->smsm = dev_get_qcom_smsm(pdev->dev.parent);
+	if (!smd->smsm) {
+		dev_err(&pdev->dev, "failed to acquire smsm handle\n");
+		return -EPROBE_DEFER;
+	}
 
 	dev_set_drvdata(&pdev->dev, smd);
 
