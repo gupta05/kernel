@@ -617,6 +617,20 @@ static void qcom_smd_unregister_device(struct qcom_smd_edge *edge)
 }
 #endif
 
+void qcom_smd_wcn_log(struct qcom_smd_device *qsdev)
+{
+	struct qcom_smd *smd = qsdev->smd;
+	size_t size;
+	void *ptr;
+	int ret;
+
+	ret = qcom_smem_get(smd->smem, 422, (void**)&ptr, &size);
+	if (ret < 0)
+		return;
+
+	print_hex_dump(KERN_DEBUG, "wcnss log: ", DUMP_PREFIX_OFFSET, 16, 1, ptr, size, true);
+}
+
 static void qcom_channel_scan_worker(struct work_struct *work)
 {
 	struct qcom_smd_channel *channel;
