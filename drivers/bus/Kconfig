@@ -49,6 +49,12 @@ config QCOM_SMEM
 	help
 	  Driver for the Qualcomm Shared Memory Interface.
 
+config QCOM_SMSM
+	tristate "Qualcomm Shared Memory Signaling Mechanism"
+	depends on QCOM_SMEM
+	help
+	  Driver for the Qualcomm Shared Memory Signaling Mechanism.
+
 config ARM_CCI
 	bool "ARM CCI driver support"
 	depends on ARM && OF && CPU_V7
