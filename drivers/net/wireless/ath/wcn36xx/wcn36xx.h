@@ -195,6 +195,7 @@ struct wcn36xx {
 	struct wcn36xx_platform_ctrl_ops *ctrl_ops;
 	struct qcom_smd_device *smd_device;
 	struct qcom_smd_channel *smd_channel;
+	struct qcom_smsm *smsm;
 	/*
 	 * smd_buf must be protected with smd_mutex to garantee
 	 * that all messages are sent one after another
