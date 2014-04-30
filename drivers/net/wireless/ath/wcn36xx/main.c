@@ -20,6 +20,7 @@
 #include <linux/firmware.h>
 #include <linux/platform_device.h>
 #include <linux/qcom_smd.h>
+#include <linux/qcom_smem.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include "wcn36xx.h"
@@ -1034,7 +1035,7 @@ static int wcn36xx_msm_smsm_change_state(struct wcn36xx *wcn, u32 clear_mask, u3
 {
 	pr_err("wcn36xx_msm_smsm_change_state(0x%x, 0x%x)\n", clear_mask, set_mask);
 
-	return qcom_smsm_change_state(wcn->smd_device, clear_mask, set_mask);
+	return qcom_smsm_change_state(wcn->smsm, clear_mask, set_mask);
 }
 
 static struct wcn36xx_platform_ctrl_ops wcn36xx_ctrl_ops = {
@@ -1067,6 +1068,7 @@ static int wcn36xx_probe(struct qcom_smd_device *sdev)
 	wcn->ctrl_ops = &wcn36xx_ctrl_ops;
 
 	wcn->smd_device = sdev;
+	wcn->smsm = dev_get_qcom_smsm(NULL);
 
 	mutex_init(&wcn->hal_mutex);
 
