@@ -34,7 +34,5 @@ struct qcom_smd_channel *qcom_smd_request_channel(struct qcom_smd_device *qsdev,
 
 int qcom_smd_send(struct qcom_smd_channel *channel, void *data, int len);
 
-int qcom_smsm_change_state(struct qcom_smd_device *qsdev, u32 clear_mask, u32 set_mask);
-
 #endif
 
