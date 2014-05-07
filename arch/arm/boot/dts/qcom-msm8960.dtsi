@@ -64,17 +64,6 @@
 		cpu-offset = <0x80000>;
 	};
 
-	msmgpio: gpio@800000 {
-		compatible = "qcom,msm-gpio";
-		gpio-controller;
-		#gpio-cells = <2>;
-		ngpio = <150>;
-		interrupts = <0 16 0x4>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		reg = <0x800000 0x4000>;
-	};
-
 	gcc: clock-controller@900000 {
 		compatible = "qcom,gcc-msm8960";
 		#clock-cells = <1>;
