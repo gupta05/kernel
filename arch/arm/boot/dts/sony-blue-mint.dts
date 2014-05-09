@@ -1,5 +1,7 @@
 #include "qcom-msm8960.dtsi"
 
+#include <dt-bindings/mfd/qcom_rpm.h>
+
 / {
 	model = "Sony Xperia T";
 
@@ -79,17 +81,67 @@
 		clock-names = "core", "iface";
 	};
 
-	msm_rpm {
-		compatible = "qcom,msm8960-rpm";
+	rpm {
+		compatible = "qcom,rpm-msm8960";
 		reg = <0x108000  0x1000 0x02011008 0x4>;
 
 		interrupts = <0 19 0>, <0 21 0>, <0 22 0>;
 		interrupt-names = "ack", "err", "wakeup";
 
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		pm8921_l16: pm8921-l16 {
-			compatible = "qcom,msm8960-regulator-l16";
-			regulator-min-microvolt = <3050000>;
-			regulator-max-microvolt = <3050000>;
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L16>;
+
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+		};
+
+		pm8921-lvs1 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS1>;
+		};
+
+		pm8921-lvs2 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS2>;
+		};
+
+		pm8921-lvs3 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS3>;
+		};
+
+		pm8921-lvs4 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS4>;
+		};
+
+		pm8921-lvs5 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS5>;
+		};
+
+		pm8921-lvs6 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS6>;
+		};
+
+		pm8921-lvs7 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS7>;
+		};
+
+		pm8921-usb {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_USB_OTG_SWITCH>;
+		};
+
+		pm8921-hdmi {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_HDMI_SWITCH>;
 		};
 	};
 
