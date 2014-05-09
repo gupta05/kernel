@@ -251,4 +251,14 @@
 		};
 
 	};
+
+	amba {
+		sdcc1: sdcc@12400000 {
+			status = "okay";
+		};
+
+		sdcc3: sdcc@12180000 {
+			status = "okay";
+		};
+	};
 };
