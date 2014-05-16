@@ -5,6 +5,8 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/qcom,gcc-msm8960.h>
 
+#include <dt-bindings/mfd/qcom_rpm.h>
+
 / {
 	model = "Qualcomm MSM8960";
 	compatible = "qcom,msm8960";
@@ -123,15 +125,6 @@
 		clock-names = "core";
 	};
 
-	/* Temporary fixed regulator */
-	vsdcc_fixed: vsdcc-regulator {
-		compatible = "regulator-fixed";
-		regulator-name = "SDCC Power";
-		regulator-min-microvolt = <2700000>;
-		regulator-max-microvolt = <2700000>;
-		regulator-always-on;
-	};
-
 	amba {
 		compatible = "arm,amba-bus";
 		#address-cells = <1>;
@@ -152,7 +145,7 @@
 			non-removable;
 			cap-sd-highspeed;
 			cap-mmc-highspeed;
-			vmmc-supply = <&vsdcc_fixed>;
+			vmmc-supply = <&pm8921_l5>;
 		};
 
 		sdcc3: sdcc@12180000 {
@@ -169,7 +162,260 @@
 			cap-mmc-highspeed;
 			max-frequency   = <192000000>;
 			no-1-8-v;
-			vmmc-supply = <&vsdcc_fixed>;
+			vmmc-supply = <&pm8921_l6>;
+			vqmmc-supply = <&pm8921_l7>;
 		};
 	};
+
+	rpm {
+		compatible = "qcom,rpm-msm8960";
+		reg = <0x108000 0x1000 0x2011008 0x4>;
+
+		interrupts = <0 19 0>, <0 21 0>, <0 22 0>;
+		interrupt-names = "ack", "err", "wakeup";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		pm8921-s1 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S1>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-s2 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S2>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-s3 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S3>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-s4 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S4>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-s5 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S5>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-s6 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S6>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-s7 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S7>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-s8 {
+			compatible = "qcom,rpm-pm8921-smps";
+			reg = <QCOM_RPM_PM8921_S8>;
+
+			qcom,hpm-threshold = <100000>;
+		};
+
+		pm8921-l1 {
+			comptible = "qcom,rpm-pm8921-nldo";
+			reg = <QCOM_RPM_PM8921_L1>;
+		};
+
+		pm8921-2 {
+			comptible = "qcom,rpm-pm8921-nldo";
+			reg = <QCOM_RPM_PM8921_L2>;
+		};
+
+		pm8921-l3 {
+			comptible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L3>;
+		};
+
+		pm8921-l4 {
+			comptible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L4>;
+
+			qcom,hpm-threshold = <5000>;
+		};
+
+		pm8921_l5: pm8921-l5 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L5>;
+		};
+
+		pm8921_l6: pm8921-l6 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L6>;
+		};
+
+		pm8921_l7: pm8921-l7 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L7>;
+		};
+
+		pm8921-l8 {
+			comptible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L8>;
+		};
+
+		pm8921-l9 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L9>;
+		};
+
+		pm8921-l10 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L10>;
+		};
+
+		pm8921-l11 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L11>;
+		};
+
+		pm8921-l12 {
+			compatible = "qcom,rpm-pm8921-nldo";
+			reg = <QCOM_RPM_PM8921_L12>;
+		};
+
+		pm8921-l14 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L14>;
+
+			qcom,hpm-threshold = <5000>;
+		};
+
+		pm8921-l15 {
+			compatible = "qcom-rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L15>;
+		};
+
+		pm8921_l16: pm8921-l16 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L16>;
+		};
+
+		pm8921-l17 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L17>;
+		};
+
+		pm8921-l18 {
+			compatible = "qcom,rpm-pm8921-nldo";
+			reg = <QCOM_RPM_PM8921_L18>;
+		};
+
+		pm8921-l21 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L21>;
+		};
+
+		pm8921-l22 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L22>;
+		};
+
+		pm8921-l23 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L23>;
+		};
+
+		pm8921-l24 {
+			compatible = "qcom,rpm-pm8921-nldo1200";
+			reg = <QCOM_RPM_PM8921_L24>;
+		};
+
+		pm8921-l25 {
+			compatible = "qcom,rpm-pm8921-nldo1200";
+			reg = <QCOM_RPM_PM8921_L25>;
+		};
+
+		pm8921-l26 {
+			compatible = "qcom,rpm-pm8921-nldo1200";
+			reg = <QCOM_RPM_PM8921_L26>;
+		};
+
+		pm8921-l27 {
+			compatible = "qcom,rpm-pm8921-nldo1200";
+			reg = <QCOM_RPM_PM8921_L27>;
+		};
+
+		pm8921-l28 {
+			compatible = "qcom-rpm-pm8921-nldo1200";
+			reg = <QCOM_RPM_PM8921_L28>;
+		};
+
+		pm8921-l29 {
+			compatible = "qcom-rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L29>;
+		};
+
+		pm8921-lvs1 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS1>;
+		};
+
+		pm8921-lvs2 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS2>;
+		};
+
+		pm8921-lvs3 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS3>;
+		};
+
+		pm8921-lvs4 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS4>;
+		};
+
+		pm8921-lvs5 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS5>;
+		};
+
+		pm8921-lvs6 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS6>;
+		};
+
+		pm8921-lvs7 {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_PM8921_LVS7>;
+		};
+
+		pm8921-usb {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_USB_OTG_SWITCH>;
+		};
+
+		pm8921-hdmi {
+			compatible = "qcom,rpm-pm8921-switch";
+			reg = <QCOM_RPM_HDMI_SWITCH>;
+		};
+
+		pm8921-ncp {
+			compatible = "qcom,rpm-pm8921-ncp";
+			reg = <QCOM_RPM_PM8921_NCP>;
+		};
+	};
+
 };
