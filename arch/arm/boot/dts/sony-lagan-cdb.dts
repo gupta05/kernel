@@ -1,7 +1,10 @@
 /dts-v1/;
 
 #include "skeleton.dtsi"
+#include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/qcom,gcc-msm8960.h>
+
+#include <dt-bindings/mfd/qcom_rpm.h>
 
 / {
 	model = "Sony Lagan CDB";
@@ -103,6 +106,54 @@
 				bias-disable;
 			};
 		};
+
+		sdc1_active: sdc1_active {
+			clk {
+				pins = "sdc1_clk";
+				drive-strengh = <16>;
+				bias-disable;
+			};
+
+			cmd {
+				pins = "sdc1_cmd";
+				drive-strengh = <10>;
+				bias-pull-up;
+			};
+
+			data {
+				pins = "sdc1_data";
+				drive-strengh = <10>;
+				bias-pull-up;
+			};
+		};
+
+		sdc3_active: sdc3_active {
+			clk {
+				pins = "sdc3_clk";
+				drive-strengh = <8>;
+				bias-disable;
+			};
+
+			cmd {
+				pins = "sdc3_cmd";
+				drive-strengh = <8>;
+				bias-pull-up;
+			};
+
+			data {
+				pins = "sdc3_data";
+				drive-strengh = <8>;
+				bias-pull-up;
+			};
+		 };
+
+		sdc3_cd: sdc3_cd {
+			pin {
+				pins = "gpio26";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
 	};
 
 	serial@1a040000 {
@@ -152,5 +203,90 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&gsbi2_i2c_active>;
+	};
+
+	amba {
+		compatible = "arm,amba-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		sdcc1: sdcc@12400000 {
+			compatible      = "arm,pl18x", "arm,primecell";
+			arm,primecell-periphid = <0x00051180>;
+			reg             = <0x12400000 0x8000>;
+			interrupts      = <GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "cmd_irq";
+			clocks          = <&gcc SDC1_CLK>, <&gcc SDC1_H_CLK>;
+			clock-names     = "mclk", "apb_pclk";
+			bus-width       = <8>;
+			max-frequency   = <192000000>;
+			non-removable;
+			cap-sd-highspeed;
+			cap-mmc-highspeed;
+			vmmc-supply = <&pm8921_l5>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdc1_active>;
+		};
+
+		sdcc3: sdcc@12180000 {
+			compatible      = "arm,pl18x", "arm,primecell";
+			arm,primecell-periphid = <0x00051180>;
+			status = "NO!";
+			reg             = <0x12180000 0x8000>;
+			interrupts      = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "cmd_irq";
+			clocks          = <&gcc SDC3_CLK>, <&gcc SDC3_H_CLK>;
+			clock-names     = "mclk", "apb_pclk";
+			bus-width       = <4>;
+			cap-sd-highspeed;
+			cap-mmc-highspeed;
+			max-frequency   = <192000000>;
+			no-1-8-v;
+			vmmc-supply = <&pm8921_l6>;
+			vqmmc-supply = <&pm8921_l7>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdc3_active &sdc3_cd>;
+		};
+	};
+
+	rpm {
+		compatible = "qcom,rpm-apq8064";
+		reg = <0x108000 0x1000 0x2011008 0x4>;
+
+		interrupts = <0 19 0>, <0 21 0>, <0 22 0>;
+		interrupt-names = "ack", "err", "wakeup";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		pm8921_l5: pm8921-l5 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L5>;
+
+			regulator-min-microvolt = <2950000>;
+			regulator-max-microvolt = <2950000>;
+		};
+
+		pm8921_l6: pm8921-l6 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L6>;
+
+			regulator-min-microvolt = <2950000>;
+			regulator-max-microvolt = <2950000>;
+		};
+
+		pm8921_l7: pm8921-l7 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L7>;
+
+			regulator-min-microvolt = <1850000>;
+			regulator-max-microvolt = <2950000>;
+
+			qcom,system-load = <10000>;
+			qcom,init-load = <10000>;
+		};
 	};
 };
