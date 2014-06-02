@@ -66,6 +66,7 @@ config DA8XX_REMOTEPROC
 
 config QCOM_REMOTEPROC
 	tristate "Qualcomm Peripherial Image Loader"
+	depends on OF && ARCH_QCOM
 	select REMOTEPROC
 	help
 	  Say y here to support the Qualcomm Peripherial Image Loader.
