@@ -96,7 +96,7 @@ config BT_HCIUART_3WIRE
 
 config BT_HCIUART_SMD
 	bool "Qualcomm HCI SMD driver"
-	depends on MFD_QCOM_SMD
+	depends on MFD_QCOM_SMD && BROKEN
 	help
 	  HCI driver for SMD.
 
