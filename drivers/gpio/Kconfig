@@ -203,6 +203,7 @@ config GPIO_MPC8XXX
 
 config GPIO_MSM_QPNP
 	tristate "Qualcomm QPNP gpio support"
+	depends on GPIOLIB && OF && ARCH_QCOM
 	help
 	  Say 'y' here to include support for the Qualcomm QPNP gpio
 	  driver. This driver supports Device Tree and allows a
