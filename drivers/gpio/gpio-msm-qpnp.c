@@ -866,7 +866,7 @@ static int qpnp_pin_apply_config(struct qpnp_pin_chip *q_chip,
 
 static int qpnp_pin_free_chip(struct qpnp_pin_chip *q_chip)
 {
-	int rc;
+	// int rc;
 
 	mutex_lock(&qpnp_pin_chips_lock);
 	list_del(&q_chip->chip_list);
