@@ -133,6 +133,10 @@ obj-$(CONFIG_VHOST_RING)	+= vhost/
 obj-$(CONFIG_VLYNQ)		+= vlynq/
 obj-$(CONFIG_STAGING)		+= staging/
 obj-y				+= platform/
+
+# soc specific drivers
+obj-y				+= soc/
+
 #common clk code
 obj-y				+= clk/
 
