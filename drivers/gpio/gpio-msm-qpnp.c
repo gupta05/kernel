@@ -1341,16 +1341,16 @@ static int qpnp_pin_remove(struct platform_device *pdev)
 	return qpnp_pin_free_chip(q_chip);
 }
 
-static const struct of_device_id qpnp_pin_idtable[] = {
+static const struct of_device_id qpnp_pin_of_match[] = {
 	{ .compatible = "qcom,qpnp-pin" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, qpnp_pin_match_table);
+MODULE_DEVICE_TABLE(of, qpnp_pin_of_match);
 
 static struct platform_driver qpnp_pin_driver = {
 	.driver		= {
 		.name	= "qcom,qpnp-pin",
-		.of_match_table = qpnp_pin_idtable,
+		.of_match_table = qpnp_pin_of_match,
 	},
 	.probe		= qpnp_pin_probe,
 	.remove		= qpnp_pin_remove,
