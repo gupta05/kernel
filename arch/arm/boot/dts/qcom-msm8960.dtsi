@@ -5,7 +5,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/qcom,gcc-msm8960.h>
 
-#include <dt-bindings/mfd/qcom_rpm.h>
+#include <dt-bindings/soc/qcom,rpm.h>
 
 / {
 	model = "Qualcomm MSM8960";
@@ -180,57 +180,41 @@
 		pm8921-s1 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S1>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-s2 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S2>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-s3 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S3>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-s4 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S4>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-s5 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S5>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-s6 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S6>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-s7 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S7>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-s8 {
 			compatible = "qcom,rpm-pm8921-smps";
 			reg = <QCOM_RPM_PM8921_S8>;
-
-			qcom,hpm-threshold = <100000>;
 		};
 
 		pm8921-l1 {
@@ -251,8 +235,6 @@
 		pm8921-l4 {
 			comptible = "qcom,rpm-pm8921-pldo";
 			reg = <QCOM_RPM_PM8921_L4>;
-
-			qcom,hpm-threshold = <5000>;
 		};
 
 		pm8921_l5: pm8921-l5 {
@@ -298,8 +280,6 @@
 		pm8921-l14 {
 			compatible = "qcom,rpm-pm8921-pldo";
 			reg = <QCOM_RPM_PM8921_L14>;
-
-			qcom,hpm-threshold = <5000>;
 		};
 
 		pm8921-l15 {

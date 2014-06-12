@@ -4,7 +4,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/qcom,gcc-msm8960.h>
 
-#include <dt-bindings/mfd/qcom_rpm.h>
+#include <dt-bindings/soc/qcom,rpm.h>
 
 / {
 	model = "Sony Lagan CDB";
@@ -268,6 +268,8 @@
 
 			regulator-min-microvolt = <2950000>;
 			regulator-max-microvolt = <2950000>;
+
+			bias-pull-down;
 		};
 
 		pm8921_l6: pm8921-l6 {
@@ -276,6 +278,8 @@
 
 			regulator-min-microvolt = <2950000>;
 			regulator-max-microvolt = <2950000>;
+
+			bias-pull-down;
 		};
 
 		pm8921_l7: pm8921-l7 {
@@ -285,8 +289,17 @@
 			regulator-min-microvolt = <1850000>;
 			regulator-max-microvolt = <2950000>;
 
-			qcom,system-load = <10000>;
-			qcom,init-load = <10000>;
+			bias-pull-down;
+		};
+
+		pm8921-l29 {
+			compatible = "qcom,rpm-pm8921-pldo";
+			reg = <QCOM_RPM_PM8921_L29>;
+
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+
+			bias-pull-down;
 		};
 	};
 };
