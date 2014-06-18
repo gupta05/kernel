@@ -57,7 +57,9 @@ static int gsbi_probe(struct platform_device *pdev)
 	/* make sure the gsbi control write is not reordered */
 	wmb();
 
+#if 0
 	clk_disable_unprepare(hclk);
+#endif
 
 	return of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 }
