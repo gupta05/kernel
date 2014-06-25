@@ -7,6 +7,7 @@ clk-qcom-y += clk-rcg.o
 clk-qcom-y += clk-rcg2.o
 clk-qcom-y += clk-branch.o
 clk-qcom-y += clk-generic.o
+clk-qcom-y += clk-hfpll.o
 clk-qcom-y += reset.o
 
 obj-$(CONFIG_MSM_GCC_8660) += gcc-msm8660.o
