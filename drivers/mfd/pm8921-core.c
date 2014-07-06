@@ -26,6 +26,7 @@
 #include <linux/regmap.h>
 #include <linux/of_platform.h>
 #include <linux/mfd/core.h>
+#include <linux/mfd/pm8921-core.h>
 
 #define	SSBI_REG_ADDR_IRQ_BASE		0x1BB
 
@@ -235,6 +236,41 @@ static int pm8xxx_irq_set_type(struct irq_data *d, unsigned int flow_type)
 	config = chip->config[pmirq] | PM_IRQF_CLR;
 	return pm8xxx_config_irq(chip, block, config);
 }
+
+int pm8xxx_irq_read_line(int irq)
+{
+	struct irq_data *d = irq_get_irq_data(irq);
+	struct pm_irq_chip *chip = irq_data_get_irq_chip_data(d);
+	unsigned int pmirq = irqd_to_hwirq(d);
+	unsigned int bits;
+	int irq_bit;
+	u8 block;
+	int rc;
+
+	if (!chip) {
+		pr_err("Failed to resolve pm_irq_chip\n");
+		return -EINVAL;
+	}
+
+	block = pmirq / 8;
+	irq_bit = pmirq % 8;
+
+	spin_lock(&chip->pm_irq_lock);
+	rc = regmap_write(chip->regmap, SSBI_REG_ADDR_IRQ_BLK_SEL, block);
+	if (rc) {
+		pr_err("Failed Selecting Block %d rc=%d\n", block, rc);
+		goto bail;
+	}
+
+	rc = regmap_read(chip->regmap, SSBI_REG_ADDR_IRQ_RT_STATUS, &bits);
+	if (rc)
+		pr_err("Failed Reading Status rc=%d\n", rc);
+bail:
+	spin_unlock(&chip->pm_irq_lock);
+
+	return rc ? rc : !!(bits & BIT(irq_bit));
+}
+EXPORT_SYMBOL(pm8xxx_irq_read_line);
 
 static struct irq_chip pm8xxx_irq_chip = {
 	.name		= "pm8xxx",
