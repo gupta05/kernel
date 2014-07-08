@@ -1,0 +1,45 @@
+Qualcomm QPNP PWM controller
+
+Required properties:
+- compatible: should be "qcom,pm8xxx-pwm"
+- #pwm-cells: should be 2. See pwm.txt in this directory for a description of
+  the cells format.
+- reg: base address of lookup table
+
+Optional properties:
+- qcom,lut: should contain a 16 bit array of lookup table entries, up to 64.
+
+Required subnode properties:
+- qcom,channel-id: should be an ID within the range 0-7
+- qcom,lut-range: starting index and length of lookup table for ramping
+- reg: base address of register map
+
+Optional subnode properties:
+- qcom,ramp-repeat: boolean; repeat the ramp after completion
+- qcom,ramp-pingpong: boolean; repeat ramp in reverse after completion
+- qcom,ramp-reverse: boolean; iterate the ramp in reverse on start
+- qcom,ramp-duration: mS of single ramp iteration
+- qcom,ramp-pause-top: mS to pause at top of ramp before continuing
+- qcom,ramp-pause-bottom: mS to pause at bottom of ramp before continuing
+
+Example:
+
+pm8xxx-pwm@b040 {
+	compatible = "qcom,pm8xxx-pwm";
+	reg = <0xb040>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	#pwm-cells = <2>;
+	qcom,lut = /bits/ 16 <
+		0x000 0x07f 0x0bf 0x0ff 0x13f 0x17f 0x1bf 0x1ff
+	>;
+
+	pwm@b500 {
+		reg = <0xb500>;
+		qcom,channel-id = <4>;
+		qcom,ramp-repeat;
+		qcom,ramp-pingpong;
+		qcom,ramp-duration = <192>;
+		qcom,lut-range = <0 8>;
+	};
+};
