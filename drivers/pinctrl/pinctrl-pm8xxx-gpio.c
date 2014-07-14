@@ -197,26 +197,11 @@ static int pm8xxx_pinmux_enable(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
-static void pm8xxx_pinmux_disable(struct pinctrl_dev *pctldev,
-			       unsigned function,
-			       unsigned group)
-{
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
-	struct pm8xxx_gpio_pin *pin = &pctrl->pins[group];
-	u8 val;
-
-	pin->function = 0;
-	val = pin->function << 1;
-
-	pm8xxx_gpio_write(pctrl, group, 4, val);
-}
-
 static const struct pinmux_ops pm8xxx_pinmux_ops = {
 	.get_functions_count	= pm8xxx_get_functions_count,
 	.get_function_name	= pm8xxx_get_function_name,
 	.get_function_groups	= pm8xxx_get_function_groups,
 	.enable			= pm8xxx_pinmux_enable,
-	.disable		= pm8xxx_pinmux_disable,
 };
 
 static int pm8xxx_gpio_config_get(struct pinctrl_dev *pctldev,
