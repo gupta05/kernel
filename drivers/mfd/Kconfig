@@ -534,6 +534,20 @@ config MFD_PM8X41
 	  this will only be useful paired with descriptions of the independent functions
 	  as children nodes in the device tree.
 
+config MFD_QCOM_SMD
+	tristate "Qualcomm Shared Memory Driver"
+	depends on ARCH_QCOM
+	help
+	  This enables support for the Qualcomm Shared Memory Driver used for communication
+	  with various Qualcomm peripherals; like the Resource Power Management cpu and the modem
+	  subsystem.
+
+config MFD_QCOM_SMD_RPM
+	tristate "Qualcomm SMD RPM driver"
+	depends on MFD_QCOM_SMD
+	help
+	  Driver for the Qualcomm Remote Power Management cpu over SMD
+
 config MFD_RDC321X
 	tristate "RDC R-321x southbridge"
 	select MFD_CORE
