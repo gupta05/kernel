@@ -128,6 +128,26 @@ config TOUCHSCREEN_BU21013
 	  To compile this driver as a module, choose M here: the
 	  module will be called bu21013_ts.
 
+config TOUCHSCREEN_CLEARPAD
+	tristate "Synaptics ClearPad"
+	default n
+	help
+	  Say Y here to enable Synaptics ClearPad touchscreen.
+
+config TOUCHSCREEN_CLEARPAD_I2C
+	tristate "Synaptics ClearPad I2C"
+	depends on I2C && TOUCHSCREEN_CLEARPAD
+	default n
+	help
+	  Say Y here to enable Synaptics ClearPad I2C touchscreen.
+
+config TOUCHSCREEN_CLEARPAD_RMI_DEV
+	tristate "Synaptics ClearPad RMI Dev"
+	depends on GPIO_SYSFS && TOUCHSCREEN_CLEARPAD && TOUCHSCREEN_CLEARPAD_I2C
+	default n
+	help
+	  Say Y here to enable Synaptics ClearPad RMI dev.
+
 config TOUCHSCREEN_CY8CTMG110
 	tristate "cy8ctmg110 touchscreen"
 	depends on I2C
@@ -379,6 +399,18 @@ config TOUCHSCREEN_MAX11801
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called max11801_ts.
+
+config TOUCHSCREEN_MAX1187X
+	tristate "Maxim max1187x Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have a Maxim max1187x touchscreen connected
+	  to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max1187x.
 
 config TOUCHSCREEN_MCS5000
 	tristate "MELFAS MCS-5000 touchscreen"
