@@ -57,6 +57,7 @@ obj-$(CONFIG_LEDS_LM355x)		+= leds-lm355x.o
 obj-$(CONFIG_LEDS_BLINKM)		+= leds-blinkm.o
 obj-$(CONFIG_LEDS_VERSATILE)		+= leds-versatile.o
 obj-$(CONFIG_LEDS_PM8XXX_PWM)		+= leds-pm8xxx-pwm.o
+obj-$(CONFIG_LEDS_PM8XXX_WLED)		+= leds-pm8xxx-wled.o
 
 # LED SPI Drivers
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o

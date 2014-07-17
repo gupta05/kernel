@@ -509,6 +509,14 @@ config LEDS_PM8XXX_PWM
 	help
 	  This option enables support for the Qualcomm PM8XXX PWM LEDs.
 
+config LEDS_PM8XXX_WLED
+	tristate "LED support for the Qualcomm PM8xxx WLED block"
+	depends on LEDS_CLASS
+	depends on REGMAP
+	help
+	  This option enables support for the 'White' LED
+	  on Qualcomm PM8xxx PMICs.
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
