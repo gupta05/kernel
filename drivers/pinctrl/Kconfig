@@ -297,6 +297,17 @@ config PINCTRL_PM8XXX_GPIO
 	  Qualcomm GPIO blocks found in the pm8018, pm8038, pm8058, pm8917 and
 	  pm8921 pmics from Qualcomm.
 
+config PINCTRL_PM8XXX_MPP
+	tristate "Qualcomm PM8xxx mpp driver"
+	depends on GPIOLIB && OF && (ARCH_QCOM || COMPILE_TEST)
+	select PINCONF
+	select PINMUX
+	select GENERIC_PINCONF
+	help
+	  This is the pinctrl, pinmux, pinconf and gpiolib driver for the
+	  Qualcomm multi purpose pin blocks found in the pm8018, pm8038,
+	  pm8058, pm8917 and pm8921 pmics from Qualcomm.
+
 config PINCTRL_ROCKCHIP
 	bool
 	select PINMUX

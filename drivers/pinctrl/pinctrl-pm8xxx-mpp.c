@@ -46,8 +46,8 @@
 #define PM8XXX_GPIO_BIAS_NP		5
 
 /* GPIO registers */
-#define SSBI_REG_ADDR_GPIO_BASE		0x150
-#define SSBI_REG_ADDR_GPIO(n)		(SSBI_REG_ADDR_GPIO_BASE + n)
+#define SSBI_REG_ADDR_MPP_BASE		XXX
+#define SSBI_REG_ADDR_MPP(n)		(SSBI_REG_ADDR_MPP_BASE + n)
 
 #define PM8XXX_GPIO_WRITE		BIT(7)
 
@@ -118,7 +118,7 @@ struct pm8xxx_pin_data {
 	bool inverted;
 };
 
-struct pm8xxx_gpio {
+struct pm8xxx_mpp {
 	struct device *dev;
 	struct regmap *regmap;
 	struct pinctrl_dev *pctrl;
@@ -166,7 +166,7 @@ enum pm8xxx_functions {
 		}, \
 	}
 
-static int pm8xxx_read_bank(struct pm8xxx_gpio *pctrl,
+static int pm8xxx_read_bank(struct pm8xxx_mpp *pctrl,
 			    struct pm8xxx_pin_data *pin, int bank)
 {
 	unsigned int val = bank << 4;
@@ -189,7 +189,7 @@ static int pm8xxx_read_bank(struct pm8xxx_gpio *pctrl,
 	return val;
 }
 
-static int pm8xxx_write_bank(struct pm8xxx_gpio *pctrl,
+static int pm8xxx_write_bank(struct pm8xxx_mpp *pctrl,
 			     struct pm8xxx_pin_data *pin,
 			     int bank,
 			     u8 val)
@@ -208,7 +208,7 @@ static int pm8xxx_write_bank(struct pm8xxx_gpio *pctrl,
 
 static int pm8xxx_get_groups_count(struct pinctrl_dev *pctldev)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 
 	return pctrl->data->npins;
 }
@@ -216,7 +216,7 @@ static int pm8xxx_get_groups_count(struct pinctrl_dev *pctldev)
 static const char *pm8xxx_get_group_name(struct pinctrl_dev *pctldev,
 					 unsigned group)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 
 	return pctrl->data->pin_groups[group].name;
 }
@@ -226,7 +226,7 @@ static int pm8xxx_get_group_pins(struct pinctrl_dev *pctldev,
 				 const unsigned **pins,
 				 unsigned *num_pins)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 
 	*pins = &pctrl->desc.pins[group].number;
 	*num_pins = 1;
@@ -337,7 +337,7 @@ static int pm8xxx_get_functions_count(struct pinctrl_dev *pctldev)
 static const char *pm8xxx_get_function_name(struct pinctrl_dev *pctldev,
 					    unsigned function)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 	struct pm8xxx_function *fn = &pctrl->data->functions[function];
 
 	if (!pctrl->data->functions)
@@ -351,7 +351,7 @@ static int pm8xxx_get_function_groups(struct pinctrl_dev *pctldev,
 				      const char * const **groups,
 				      unsigned * const num_groups)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 	struct pm8xxx_function *fn = &pctrl->data->functions[function];
 
 	if (!pctrl->data->functions)
@@ -366,7 +366,7 @@ static int pm8xxx_pinmux_enable(struct pinctrl_dev *pctldev,
 				unsigned function,
 				unsigned group)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[group].drv_data;
 	struct pm8xxx_pingroup *g = &pctrl->data->pin_groups[group];
 	u8 val;
@@ -399,7 +399,7 @@ static int pm8xxx_pin_config_get(struct pinctrl_dev *pctldev,
 				 unsigned int offset,
 				 unsigned long *config)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset].drv_data;
 	unsigned param = pinconf_to_config_param(*config);
 	unsigned arg;
@@ -450,7 +450,7 @@ static int pm8xxx_pin_config_get(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
-static int resolve_power_source(struct pm8xxx_gpio *pctrl, unsigned arg)
+static int resolve_power_source(struct pm8xxx_mpp *pctrl, unsigned arg)
 {
 	const struct pm8xxx_gpio_data *data = pctrl->data;
 	int i;
@@ -469,7 +469,7 @@ static int pm8xxx_pin_config_set(struct pinctrl_dev *pctldev,
 				 unsigned long *configs,
 				 unsigned num_configs)
 {
-	struct pm8xxx_gpio *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct pm8xxx_mpp *pctrl = pinctrl_dev_get_drvdata(pctldev);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset].drv_data;
 	unsigned param;
 	unsigned arg;
@@ -608,7 +608,7 @@ static struct pinctrl_desc pm8xxx_gpio_desc = {
 static int pm8xxx_gpio_direction_input(struct gpio_chip *chip,
 				       unsigned offset)
 {
-	struct pm8xxx_gpio *pctrl = container_of(chip, struct pm8xxx_gpio, chip);
+	struct pm8xxx_mpp *pctrl = container_of(chip, struct pm8xxx_mpp, chip);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset - 1].drv_data;
 	u8 val;
 
@@ -624,7 +624,7 @@ static int pm8xxx_gpio_direction_output(struct gpio_chip *chip,
 					unsigned offset,
 					int value)
 {
-	struct pm8xxx_gpio *pctrl = container_of(chip, struct pm8xxx_gpio, chip);
+	struct pm8xxx_mpp *pctrl = container_of(chip, struct pm8xxx_mpp, chip);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset - 1].drv_data;
 	u8 val;
 
@@ -642,7 +642,7 @@ static int pm8xxx_gpio_direction_output(struct gpio_chip *chip,
 
 static int pm8xxx_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
-	struct pm8xxx_gpio *pctrl = container_of(chip, struct pm8xxx_gpio, chip);
+	struct pm8xxx_mpp *pctrl = container_of(chip, struct pm8xxx_mpp, chip);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset - 1].drv_data;
 
 	if (pin->direction == PM8XXX_GPIO_DIR_OUT)
@@ -653,7 +653,7 @@ static int pm8xxx_gpio_get(struct gpio_chip *chip, unsigned offset)
 
 static void pm8xxx_gpio_set(struct gpio_chip *gc, unsigned offset, int value)
 {
-	struct pm8xxx_gpio *pctrl = container_of(gc, struct pm8xxx_gpio, chip);
+	struct pm8xxx_mpp *pctrl = container_of(gc, struct pm8xxx_mpp, chip);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset - 1].drv_data;
 	u8 val;
 
@@ -668,7 +668,7 @@ static void pm8xxx_gpio_set(struct gpio_chip *gc, unsigned offset, int value)
 
 static int pm8xxx_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
-	struct pm8xxx_gpio *pctrl = container_of(chip, struct pm8xxx_gpio, chip);
+	struct pm8xxx_mpp *pctrl = container_of(chip, struct pm8xxx_mpp, chip);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset - 1].drv_data;
 
 	return pin->irq;
@@ -683,7 +683,7 @@ static void pm8xxx_gpio_dbg_show_one(struct seq_file *s,
 				  unsigned offset,
 				  unsigned gpio)
 {
-	struct pm8xxx_gpio *pctrl = container_of(chip, struct pm8xxx_gpio, chip);
+	struct pm8xxx_mpp *pctrl = container_of(chip, struct pm8xxx_mpp, chip);
 	struct pm8xxx_pin_data *pin = pctrl->desc.pins[offset].drv_data;
 	struct pm8xxx_pingroup *g = &pctrl->data->pin_groups[offset];
 	int function;
@@ -749,7 +749,7 @@ static struct gpio_chip pm8xxx_gpio_template = {
 	.owner = THIS_MODULE,
 };
 
-static int pm8xxx_pin_populate(struct pm8xxx_gpio *pctrl,
+static int pm8xxx_pin_populate(struct pm8xxx_mpp *pctrl,
 			       struct pm8xxx_pin_data *pin)
 {
 	const struct pm8xxx_gpio_data *data = pctrl->data;
@@ -802,11 +802,11 @@ static int pm8xxx_pin_populate(struct pm8xxx_gpio *pctrl,
 }
 
 static const struct pm8xxx_gpio_data pm8018_gpio_data = {
-	.npins = 6,
+	.npins = 12,
 	.power_sources = (int[]) {
 		PM8XXX_GPIO_VIN_L4, PM8XXX_GPIO_VIN_L14, PM8XXX_GPIO_VIN_S3,
 		PM8XXX_GPIO_VIN_L6, PM8XXX_GPIO_VIN_L2, PM8XXX_GPIO_VIN_L5,
-		PM8XXX_GPIO_VIN_L8, PM8XXX_GPIO_VIN_VPH
+		-1, PM8XXX_GPIO_VIN_VPH,
 	},
 	.npower_sources = 8,
 };
@@ -814,251 +814,32 @@ static const struct pm8xxx_gpio_data pm8018_gpio_data = {
 static const struct pm8xxx_gpio_data pm8038_gpio_data = {
 	.npins = 12,
 	.power_sources = (int[]) {
-		PM8XXX_GPIO_VIN_VPH, PM8XXX_GPIO_VIN_BB, PM8XXX_GPIO_VIN_L11,
-		PM8XXX_GPIO_VIN_L15, PM8XXX_GPIO_VIN_L4, PM8XXX_GPIO_VIN_L3,
-		PM8XXX_GPIO_VIN_L17
+		PM8XXX_GPIO_VIN_L20, PM8XXX_GPIO_VIN_L11, PM8XXX_GPIO_VIN_L5,
+		PM8XXX_GPIO_VIN_L15, PM8XXX_GPIO_VIN_L17, -1, -1,
+		PM8XXX_GPIO_VIN_VPH
 	},
-	.npower_sources = 7,
+	.npower_sources = 8,
 };
 
 static const struct pm8xxx_gpio_data pm8058_gpio_data = {
 	.npins = 40,
 	.power_sources = (int[]) {
-		PM8XXX_GPIO_VIN_VPH, PM8XXX_GPIO_VIN_BB, PM8XXX_GPIO_VIN_S3,
-		PM8XXX_GPIO_VIN_L3, PM8XXX_GPIO_VIN_L7, PM8XXX_GPIO_VIN_L6,
-		PM8XXX_GPIO_VIN_L5, PM8XXX_GPIO_VIN_L2
+		PM8XXX_GPIO_VIN_VPH, PM8XXX_GPIO_VIN_S3, PM8XXX_GPIO_VIN_L2,
+		PM8XXX_GPIO_VIN_L3,
 	},
-	.npower_sources = 8,
-	.pin_groups = (struct pm8xxx_pingroup[]) {
-		PINGROUP(1,  kypd_sns, _),
-		PINGROUP(2,  kypd_sns, _),
-		PINGROUP(3,  kypd_sns, _),
-		PINGROUP(4,  kypd_sns, _),
-		PINGROUP(5,  kypd_sns, _),
-		PINGROUP(6,  kypd_sns, _),
-		PINGROUP(7,  kypd_sns, _),
-		PINGROUP(8,  kypd_sns, _),
-		PINGROUP(9,  kypd_drv, _),
-		PINGROUP(10, kypd_drv, _),
-		PINGROUP(11, kypd_drv, _),
-		PINGROUP(12, kypd_drv, _),
-		PINGROUP(13, kypd_drv, _),
-		PINGROUP(14, kypd_drv, _),
-		PINGROUP(15, kypd_drv, _),
-		PINGROUP(16, kypd_drv, _),
-		PINGROUP(17, kypd_drv, _),
-		PINGROUP(18, kypd_drv, _),
-		PINGROUP(19, kypd_drv, _),
-		PINGROUP(20, kypd_drv, _),
-		PINGROUP(21, kypd_drv, uart),
-		PINGROUP(22, kypd_drv, uart),
-		PINGROUP(23, kypd_drv, uart),
-		PINGROUP(24, kypd_drv, lpg),
-		PINGROUP(25, kypd_drv, lpg),
-		PINGROUP(26, kypd_drv, lpg),
-		PINGROUP(27, uim, _),
-		PINGROUP(28, uim, _),
-		PINGROUP(29, uim, lpa),
-		PINGROUP(30, uim, _),
-		PINGROUP(31, _, _),
-		PINGROUP(32, upl, _),
-		PINGROUP(33, _, _),
-		PINGROUP(34, _, _),
-		PINGROUP(35, _, _),
-		PINGROUP(36, uart, upl),
-		PINGROUP(37, uart, upl),
-		PINGROUP(38, sleep_clk, _),
-		PINGROUP(39, sleep_clk, mp3_clk),
-		PINGROUP(40, ext_smps_en, _),
-	},
-	.functions = (struct pm8xxx_function[]) {
-		FUNCTION(kypd_sns,
-			 "gpio1", "gpio2", "gpio3", "gpio4",
-			 "gpio5", "gpio6", "gpio7", "gpio8"
-		),
-		FUNCTION(kypd_drv,
-			 "gpio9", "gpio10", "gpio11", "gpio12", "gpio13",
-			 "gpio14", "gpio15", "gpio16", "gpio17", "gpio18",
-			 "gpio19", "gpio20", "gpio21", "gpio22", "gpio23",
-			 "gpio24", "gpio25", "gpio26"
-		),
-		FUNCTION(uart,
-			 "gpio21", "gpio22", "gpio23", "gpio36", "gpio37"
-		),
-		FUNCTION(lpg,
-			 "gpio24", "gpio25", "gpio26"
-		),
-		FUNCTION(uim,
-			 "gpio27", "gpio28", "gpio29", "gpio30"
-		),
-		FUNCTION(lpa,
-			 "gpio29"
-		),
-		FUNCTION(upl,
-			 "gpio32", "gpio36", "gpio37"
-		),
-		FUNCTION(sleep_clk,
-			 "gpio38", "gpio39"
-		),
-		FUNCTION(mp3_clk,
-			 "gpio39"
-		),
-		FUNCTION(ext_smps_en,
-			 "gpio40"
-		),
-		FUNCTION(gpio,
-			 "gpio1", "gpio2", "gpio3", "gpio4", "gpio5", "gpio6",
-			 "gpio7", "gpio8", "gpio9", "gpio10", "gpio11",
-			 "gpio12", "gpio13", "gpio14", "gpio15", "gpio16",
-			 "gpio17", "gpio18", "gpio19", "gpio20", "gpio21",
-			 "gpio22", "gpio23", "gpio24", "gpio25", "gpio26",
-			 "gpio27", "gpio28", "gpio29", "gpio30", "gpio31",
-			 "gpio32", "gpio33", "gpio34", "gpio35", "gpio36",
-			 "gpio37", "gpio38", "gpio39", "gpio40"
-		),
-		FUNCTION(paired,
-			 "gpio1", "gpio2", "gpio3", "gpio4", "gpio5", "gpio6",
-			 "gpio7", "gpio8", "gpio9", "gpio10", "gpio11",
-			 "gpio12", "gpio13", "gpio14", "gpio15", "gpio16",
-			 "gpio17", "gpio18", "gpio19", "gpio20", "gpio21",
-			 "gpio22", "gpio23", "gpio24", "gpio25", "gpio26",
-			 "gpio27", "gpio28", "gpio29", "gpio30", "gpio31",
-			 "gpio32", "gpio33", "gpio34", "gpio35", "gpio36",
-			 "gpio37", "gpio38", "gpio39", "gpio40"
-		),
-		FUNCTION(ext_reg_en),
-		FUNCTION(fclk),
-		FUNCTION(_)
-	},
-};
-static const struct pm8xxx_gpio_data pm8917_gpio_data = {
-	.npins = 38,
-	.power_sources = (int[]) {
-		PM8XXX_GPIO_VIN_VPH, PM8XXX_GPIO_VIN_BB, PM8XXX_GPIO_VIN_S4,
-		PM8XXX_GPIO_VIN_L15, PM8XXX_GPIO_VIN_L4, PM8XXX_GPIO_VIN_L3,
-		PM8XXX_GPIO_VIN_L17
-	},
-	.npower_sources = 7,
+	.npower_sources = 4,
 };
 
 static const struct pm8xxx_gpio_data pm8921_gpio_data = {
 	.npins = 44,
 	.power_sources = (int[]) {
-		PM8XXX_GPIO_VIN_VPH, PM8XXX_GPIO_VIN_BB, PM8XXX_GPIO_VIN_S4,
-		PM8XXX_GPIO_VIN_L15, PM8XXX_GPIO_VIN_L4, PM8XXX_GPIO_VIN_L3,
-		PM8XXX_GPIO_VIN_L17
+		PM8XXX_GPIO_VIN_S4, -1, PM8XXX_GPIO_VIN_L15,
+		PM8XXX_GPIO_VIN_L17, -1, -1, PM8XXX_GPIO_VIN_VPH,
 	},
 	.npower_sources = 7,
-	.pin_groups = (struct pm8xxx_pingroup[]) {
-		PINGROUP(1,  kypd_sns, _),
-		PINGROUP(2,  kypd_sns, _),
-		PINGROUP(3,  kypd_sns, _),
-		PINGROUP(4,  kypd_sns, _),
-		PINGROUP(5,  kypd_sns, _),
-		PINGROUP(6,  kypd_sns, _),
-		PINGROUP(7,  kypd_sns, _),
-		PINGROUP(8,  kypd_sns, uart),
-		PINGROUP(9,  kypd_drv, _),
-		PINGROUP(10, kypd_drv, _),
-		PINGROUP(11, kypd_drv, _),
-		PINGROUP(12, kypd_drv, _),
-		PINGROUP(13, kypd_drv, _),
-		PINGROUP(14, kypd_drv, _),
-		PINGROUP(15, kypd_drv, _),
-		PINGROUP(16, kypd_drv, _),
-		PINGROUP(17, kypd_drv, _),
-		PINGROUP(18, kypd_drv, _),
-		PINGROUP(19, kypd_drv, _),
-		PINGROUP(20, kypd_drv, _),
-		PINGROUP(21, kypd_drv, uart),
-		PINGROUP(22, kypd_drv, uart),
-		PINGROUP(23, kypd_drv, uart),
-		PINGROUP(24, kypd_drv, lpg),
-		PINGROUP(25, kypd_drv, lpg),
-		PINGROUP(26, kypd_drv, lpg),
-		PINGROUP(27, uim, _),
-		PINGROUP(28, uim, _),
-		PINGROUP(29, uim, _),
-		PINGROUP(30, uim, _),
-		PINGROUP(31, uim, _),
-		PINGROUP(32, uim, _),
-		PINGROUP(33, uart, _),
-		PINGROUP(34, uart, _),
-		PINGROUP(35, uart, _),
-		PINGROUP(36, uim, _),
-		PINGROUP(37, uim, _),
-		PINGROUP(38, uart, _),
-		PINGROUP(39, fclk, _),
-		PINGROUP(40, ext_reg_en, _),
-		PINGROUP(41, ext_reg_en, _),
-		PINGROUP(42, _, _),
-		PINGROUP(43, sleep_clk, mp3_clk),
-		PINGROUP(44, sleep_clk, mp3_clk),
-	},
-	.functions = (struct pm8xxx_function[]) {
-		FUNCTION(kypd_sns,
-			 "gpio1", "gpio2", "gpio3", "gpio4",
-			 "gpio5", "gpio6", "gpio7", "gpio8",
-		),	
-		FUNCTION(kypd_drv,
-			 "gpio9", "gpio10", "gpio11", "gpio12", "gpio13",
-			 "gpio14", "gpio15", "gpio16", "gpio17", "gpio18",
-			 "gpio19", "gpio20", "gpio21", "gpio22", "gpio23",
-			 "gpio24", "gpio25", "gpio26",
-		),
-		FUNCTION(uart,
-			 "gpio8", "gpio21", "gpio22", "gpio23",
-			 "gpio33", "gpio34", "gpio35", "gpio38"
-		),
-		FUNCTION(lpg,
-			 "gpio24", "gpio25", "gpio26"
-		),
-		FUNCTION(uim,
-			 "gpio27", "gpio28", "gpio29", "gpio30",
-			 "gpio31", "gpio32", "gpio36", "gpio37"
-		),
-		FUNCTION(fclk,
-			 "gpio39"
-		),
-		FUNCTION(ext_reg_en,
-			 "gpio40", "gpio41"
-		),
-		FUNCTION(sleep_clk,
-			 "gpio43", "gpio44"
-		),
-		FUNCTION(mp3_clk,
-			 "gpio43", "gpio44"
-		),
-		FUNCTION(gpio,
-			 "gpio1", "gpio2", "gpio3", "gpio4", "gpio5", "gpio6",
-			 "gpio7", "gpio8", "gpio9", "gpio10", "gpio11",
-			 "gpio12", "gpio13", "gpio14", "gpio15", "gpio16",
-			 "gpio17", "gpio18", "gpio19", "gpio20", "gpio21",
-			 "gpio22", "gpio23", "gpio24", "gpio25", "gpio26",
-			 "gpio27", "gpio28", "gpio29", "gpio30", "gpio31",
-			 "gpio32", "gpio33", "gpio34", "gpio35", "gpio36",
-			 "gpio37", "gpio38", "gpio39", "gpio40", "gpio41",
-			 "gpio42", "gpio43", "gpio44",
-		),
-		FUNCTION(paired,
-			 "gpio1", "gpio2", "gpio3", "gpio4", "gpio5", "gpio6",
-			 "gpio7", "gpio8", "gpio9", "gpio10", "gpio11",
-			 "gpio12", "gpio13", "gpio14", "gpio15", "gpio16",
-			 "gpio17", "gpio18", "gpio19", "gpio20", "gpio21",
-			 "gpio22", "gpio23", "gpio24", "gpio25", "gpio26",
-			 "gpio27", "gpio28", "gpio29", "gpio30", "gpio31",
-			 "gpio32", "gpio33", "gpio34", "gpio35", "gpio36",
-			 "gpio37", "gpio38", "gpio39", "gpio40", "gpio41",
-			 "gpio42", "gpio43", "gpio44",
-		),
-		FUNCTION(ext_smps_en),
-		FUNCTION(lpa),
-		FUNCTION(upl),
-		FUNCTION(_)
-	},
 };
 
-static const struct of_device_id pm8xxx_gpio_of_match[] = {
+static const struct of_device_id pm8xxx_mpp_of_match[] = {
 	{ .compatible = "qcom,pm8018-gpio", .data = &pm8018_gpio_data },
 	{ .compatible = "qcom,pm8038-gpio", .data = &pm8038_gpio_data },
 	{ .compatible = "qcom,pm8058-gpio", .data = &pm8058_gpio_data },
@@ -1066,18 +847,18 @@ static const struct of_device_id pm8xxx_gpio_of_match[] = {
 	{ .compatible = "qcom,pm8921-gpio", .data = &pm8921_gpio_data },
 	{ },
 };
-MODULE_DEVICE_TABLE(of, pm8xxx_gpio_of_match);
+MODULE_DEVICE_TABLE(of, pm8xxx_mpp_of_match);
 
-static int pm8xxx_gpio_probe(struct platform_device *pdev)
+static int pm8xxx_mpp_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	struct pm8xxx_pin_data *pin_data;
 	struct pinctrl_pin_desc *pins;
-	struct pm8xxx_gpio *pctrl;
+	struct pm8xxx_mpp *pctrl;
 	int ret;
 	int i;
 
-	match = of_match_node(pm8xxx_gpio_of_match, pdev->dev.of_node);
+	match = of_match_node(pm8xxx_mpp_of_match, pdev->dev.of_node);
 	if (!match)
 		return -ENXIO;
 
@@ -1112,7 +893,7 @@ static int pm8xxx_gpio_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	for (i = 0; i < pctrl->desc.npins; i++) {
-		pin_data[i].reg = SSBI_REG_ADDR_GPIO(i);
+		pin_data[i].reg = SSBI_REG_ADDR_MPP(i);
 		pin_data[i].irq = platform_get_irq(pdev, i);
 		if (pin_data[i].irq < 0) {
 			dev_err(&pdev->dev,
@@ -1171,9 +952,9 @@ unregister_gpiochip:
 	return ret;
 }
 
-static int pm8xxx_gpio_remove(struct platform_device *pdev)
+static int pm8xxx_mpp_remove(struct platform_device *pdev)
 {
-	struct pm8xxx_gpio *pctrl = platform_get_drvdata(pdev);
+	struct pm8xxx_mpp *pctrl = platform_get_drvdata(pdev);
 	int ret;
 
 	ret = gpiochip_remove(&pctrl->chip);
@@ -1187,18 +968,18 @@ static int pm8xxx_gpio_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver pm8xxx_gpio_driver = {
+static struct platform_driver pm8xxx_mpp_driver = {
 	.driver = {
-		.name = "pm8xxx_gpio",
+		.name = "pm8xxx_mpp",
 		.owner = THIS_MODULE,
-		.of_match_table = pm8xxx_gpio_of_match,
+		.of_match_table = pm8xxx_mpp_of_match,
 	},
-	.probe = pm8xxx_gpio_probe,
-	.remove = pm8xxx_gpio_remove,
+	.probe = pm8xxx_mpp_probe,
+	.remove = pm8xxx_mpp_remove,
 };
 
-module_platform_driver(pm8xxx_gpio_driver);
+module_platform_driver(pm8xxx_mpp_driver);
 
 MODULE_AUTHOR("Bjorn Andersson <bjorn.andersson@sonymobile.com>");
-MODULE_DESCRIPTION("Qualcomm PM8xxx GPIO driver");
+MODULE_DESCRIPTION("Qualcomm PM8xxx MPP driver");
 MODULE_LICENSE("GPL v2");

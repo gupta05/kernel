@@ -512,144 +512,144 @@
 	pm8921_gpio_default: pm8921-gpio-default {
 		camera-keys {
 			pins = "gpio1", "gpio2";
-			function = "normal";
+			function = "gpio";
 
 			bias-pull-up;
 			input-enable;
 			drive-push-pull;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		volume-keys {
 			pins = "gpio20", "gpio21";
-			function = "normal";
+			function = "gpio";
 
 			bias-pull-up;
 			input-enable;
 			drive-push-pull;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		kypd-drv2 {
 			pins = "gpio10";
-			function = "normal";
+			function = "gpio";
 
 			bias-disable;
 			drive-push-pull;
 			output-low;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_HIGH>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_HIGH>;
 
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		right-spkr-en {
 			pins = "gpio19";
-			function = "normal";
+			function = "gpio";
 
 			bias-disable;
 			drive-push-pull;
 			output-low;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_MED>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_MED>;
 
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		rf-id-en {
 			pins = "gpio22";
-			function = "normal";
+			function = "gpio";
 
 			bias-disable;
 			drive-push-pull;
 			output-low;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_HIGH>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_HIGH>;
 
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		sdcard-detect {
 			pins = "gpio26";
-			function = "normal";
+			function = "gpio";
 
 			input-enable;
 
 			bias-disable;
 			drive-push-pull;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
 
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		wcd9310-reset-n {
 			pins = "gpio34";
-			function = "normal";
+			function = "gpio";
 
 			drive-push-pull;
 			bias-disable;
 			output-high;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_MED>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_MED>;
 
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		sim-detect {
 			pins = "gpio36";
-			function = "normal";
+			function = "gpio";
 
 			input-enable;
 
 			bias-pull-up;
 			drive-push-pull;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
 
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		plug-detect {
 			pins = "gpio38";
-			function = "normal";
+			function = "gpio";
 
 			input-enable;
 
 			bias-disable;
 			drive-push-pull;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_NO>;
 
 			power-source = <PM8XXX_GPIO_VIN_S4>;
 		};
 
 		otg-ovp-cntl {
 			pins = "gpio42";
-			function = "normal";
+			function = "gpio";
 
 			output-high;
 			drive-push-pull;
 
-			drive-strength = <PM8XXX_GPIO_STRENGTH_LOW>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_LOW>;
 			power-source = <PM8XXX_GPIO_VIN_VPH>;
 		};
 
 		lcd-reset {
 			pins = "gpio43";
-			function = "normal";
+			function = "gpio";
 
 			output-low;
 			drive-push-pull;
 			bias-disable;
 			power-source = <PM8XXX_GPIO_VIN_S4>;
-			drive-strength = <PM8XXX_GPIO_STRENGTH_LOW>;
+			qcom,drive-strength = <PM8XXX_GPIO_STRENGTH_LOW>;
 		};
 
 		nc {
 			pins = "gpio3", "gpio4", "gpio5", "gpio6", "gpio7",
-			     "gpio8", "gpio9", "gpio11", "gpio12", "gpio13",
-			     "gpio14", "gpio15", "gpio16", "gpio17",
-			     "gpio18", "gpio23", "gpio24", "gpio25",
-			     "gpio28", "gpio31", "gpio32", "gpio33",
-			     "gpio35", "gpio37", "gpio40", "gpio41",
-			     "gpio44";
-			function = "normal";
+			       "gpio8", "gpio9", "gpio11", "gpio12", "gpio13",
+			       "gpio14", "gpio15", "gpio16", "gpio17",
+			       "gpio18", "gpio23", "gpio24", "gpio25",
+			       "gpio28", "gpio31", "gpio32", "gpio33",
+			       "gpio35", "gpio37", "gpio40", "gpio41",
+			       "gpio44";
+			function = "gpio";
 
 			bias-high-impedance;
 		};
