@@ -22,6 +22,7 @@
 #include <linux/device.h>
 
 struct hwspinlock_device;
+struct of_phandle_args;
 
 /**
  * struct hwspinlock_ops - platform-specific hwspinlock handlers
@@ -56,6 +57,10 @@ struct hwspinlock {
  * @dev: underlying device, will be used to invoke runtime PM api
  * @ops: platform-specific hwspinlock handlers
  * @base_id: id index of the first lock in this device
+ * @of_xlate: callback function for retrieving a lock id from a device and a
+ *            phandle argument
+ * @of_n_cells: number of arguments for the of_xlate lookup
+ * @list: list node for internal use
  * @num_locks: number of locks in this device
  * @lock: dynamically allocated array of 'struct hwspinlock'
  */
@@ -63,6 +68,10 @@ struct hwspinlock_device {
 	struct device *dev;
 	const struct hwspinlock_ops *ops;
 	int base_id;
+	int (*of_xlate)(struct hwspinlock_device*,
+			const struct of_phandle_args *args);
+	unsigned int of_n_cells;
+	struct list_head list;
 	int num_locks;
 	struct hwspinlock lock[0];
 };
