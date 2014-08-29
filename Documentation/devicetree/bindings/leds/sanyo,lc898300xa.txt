@@ -1,0 +1,27 @@
+Binding for Sanyo LC898300XA linear vibrator chip
+
+Required properties:
+- compatible: "sanyo,lc898300xa"
+- reg: I2C slave address
+- label:  (optional)
+  see Documentation/devicetree/bindings/leds/common.txt
+- linux,default-trigger: (optional)
+  see Documentation/devicetree/bindings/leds/common.txt
+- sanyo,resonance-frequency:
+- sanyo,startup-time:
+- sanyo,break-time:
+- sanyo,break-power:
+- sanyo,atbr:
+
+Examples:
+
+leds {
+	compatible = "sanyo,lc898300xa";
+	reg = <0x49>;
+	label = "vibrator";
+	linux,default-trigger = "transient";
+	sanyo,resonance-frequency = <150>;
+	sanyo,startup-time = <10>;
+	sanyo,break-time = <2>;
+	sanyo,break-power = <15>;
+};
