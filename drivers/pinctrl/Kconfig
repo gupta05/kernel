@@ -210,6 +210,17 @@ config PINCTRL_IMX28
 	bool
 	select PINCTRL_MXS
 
+config PINCTRL_PM8XXX_GPIO
+	tristate "Qualcomm PM8xxx gpio driver"
+	depends on GPIOLIB && OF && (ARCH_QCOM || COMPILE_TEST)
+	select PINCONF
+	select PINMUX
+	select GENERIC_PINCONF
+	help
+	  This is the pinctrl, pinmux, pinconf and gpiolib driver for the
+	  Qualcomm GPIO blocks found in the pm8018, pm8038, pm8058, pm8917 and
+	  pm8921 pmics from Qualcomm.
+
 config PINCTRL_ROCKCHIP
 	bool
 	select PINMUX
