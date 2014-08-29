@@ -1,0 +1,40 @@
+Qualcomm PM8xxx LED connected to PWM
+
+Required properties:
+- compatible: should be "qcom,pm8xxx-pwm-led".
+- reg: Address where the registers for the RGB LEDs are located
+
+Each LED is represented as a sub-node of the pm8xxx pwm device.
+
+LED sub-node required properties:
+- pwms: PWM property pointing to the the PWM device according to the pwmchip
+  implementation
+  See Documentation/devicetree/bindings/pwm/pwm.txt
+- qcom,id: One of "red", "green", or "blue" to specify which LED this is
+  internally connected to.
+
+LED sub-node optional properties:
+- pwm-names: Name to be used by the PWM subsystem for the specifed PWMs
+  See Documentation/devicetree/bindings/pwm/pwm.txt
+- label: The label for this led
+  See Documentation/devicetree/bindings/leds/common.txt
+- linux,default-trigger: Default trigger assigned to the LED
+  See Documentation/devicetree/bindings/leds/common.txt
+
+Example:
+
+pm8xxx_pwm: pm8xxx-pwm@b040 {
+	compatible = "qcom,pm8xxx-pwm";
+	#pwm-cells = <2>;
+	...
+};
+
+pm8xxx-pwm-led@d000 {
+	compatible = "qcom,pm8xxx-pwm-led";
+	reg = <0xd000>;
+	charger-led {
+		label = "charger";
+		pwms = <&pm8xxx_pwm 6 1000>;
+		qcom,id = "red";
+	};
+};
