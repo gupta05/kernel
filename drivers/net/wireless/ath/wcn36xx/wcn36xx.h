@@ -73,7 +73,7 @@ enum wcn36xx_debug_mask {
 	if (wcn36xx_dbg_mask & mask)					\
 		print_hex_dump(KERN_DEBUG, pr_fmt(prefix_str),	\
 			       DUMP_PREFIX_OFFSET, 32, 1,	\
-			       buf, len, false);		\
+			       buf, len, true);		\
 } while (0)
 
 #define WCN36XX_HW_CHANNEL(__wcn) (__wcn->hw->conf.chandef.chan->hw_value)
@@ -195,7 +195,8 @@ struct wcn36xx {
 	struct wcn36xx_platform_ctrl_ops *ctrl_ops;
 	struct qcom_smd_device *smd_device;
 	struct qcom_smd_channel *smd_channel;
-	struct qcom_smsm *smsm;
+	int			tx_enable_gpio;
+	int			tx_rings_empty_gpio;
 	/*
 	 * smd_buf must be protected with smd_mutex to garantee
 	 * that all messages are sent one after another
@@ -247,5 +248,7 @@ static inline bool wcn36xx_is_fw_version(struct wcn36xx *wcn,
 		wcn->fw_revision == revision);
 }
 void wcn36xx_set_default_rates(struct wcn36xx_hal_supported_rates *rates);
+
+int wcn36xx_smd_rsp_process(struct qcom_smd_device *sdev, void *buf, size_t len);
 
 #endif	/* _WCN36XX_H_ */
