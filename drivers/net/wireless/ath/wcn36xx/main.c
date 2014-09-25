@@ -19,13 +19,14 @@
 #include <linux/module.h>
 #include <linux/firmware.h>
 #include <linux/platform_device.h>
-#include <linux/qcom_smd.h>
-#include <linux/qcom_smem.h>
+#include <linux/soc/qcom/qcom_smd.h>
+#include <linux/soc/qcom/qcom_smem.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
+#include <linux/of_gpio.h>
 #include "wcn36xx.h"
 
-unsigned int wcn36xx_dbg_mask = -1;
+unsigned int wcn36xx_dbg_mask;
 module_param_named(debug_mask, wcn36xx_dbg_mask, uint, 0644);
 MODULE_PARM_DESC(debug_mask, "Debugging mask");
 
@@ -236,12 +237,78 @@ static void wcn36xx_detect_chip_version(struct wcn36xx *wcn)
 	}
 }
 
+#define PRONTO_PMU_OFFSET       0x21b000 + 0x1004
+#define PRONTO_SPARE_OFFSET     0x21b000 + 0x1088
+#define NVBIN_DLND_BIT          BIT(25)
+
+#define WCNSS_PMU_CFG_IRIS_XO_CFG          BIT(3)
+#define WCNSS_PMU_CFG_IRIS_XO_EN           BIT(4)
+#define WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP   BIT(5)
+#define WCNSS_PMU_CFG_IRIS_XO_CFG_STS      BIT(6) /* 1: in progress, 0: done */
+
+#define WCNSS_PMU_CFG_IRIS_RESET           BIT(7)
+#define WCNSS_PMU_CFG_IRIS_RESET_STS       BIT(8) /* 1: in progress, 0: done */
+#define WCNSS_PMU_CFG_IRIS_XO_READ         BIT(9)
+#define WCNSS_PMU_CFG_IRIS_XO_READ_STS     BIT(10)
+
+#define WCNSS_PMU_CFG_IRIS_XO_MODE         0x6
+#define WCNSS_PMU_CFG_IRIS_XO_MODE_48      (3 << 1)
+
+static void wcn36xx_power_on(struct wcn36xx *wcn)
+{
+	u32 val;
+
+	return;
+
+	printk(KERN_ERR "1\n");
+
+	val = readl(wcn->mmio + PRONTO_SPARE_OFFSET);
+	val |= NVBIN_DLND_BIT;
+	writel(val, wcn->mmio + PRONTO_SPARE_OFFSET);
+	
+
+	writel(0, wcn->mmio + PRONTO_PMU_OFFSET);
+	val = readl(wcn->mmio + PRONTO_PMU_OFFSET);
+	val |= WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
+	val |= WCNSS_PMU_CFG_IRIS_XO_EN;
+	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
+
+	val &= ~WCNSS_PMU_CFG_IRIS_XO_MODE;
+	val |= WCNSS_PMU_CFG_IRIS_XO_MODE_48;
+	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
+
+	val |= WCNSS_PMU_CFG_IRIS_RESET;
+	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
+
+	printk(KERN_ERR "1\n");
+	while (readl(wcn->mmio + PRONTO_PMU_OFFSET) & WCNSS_PMU_CFG_IRIS_RESET_STS)
+		cpu_relax();
+	printk(KERN_ERR "1\n");
+
+	val &= ~WCNSS_PMU_CFG_IRIS_RESET;
+	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
+
+	val |= WCNSS_PMU_CFG_IRIS_XO_CFG;
+	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
+	
+	printk(KERN_ERR "1\n");
+	while (readl(wcn->mmio + PRONTO_PMU_OFFSET) & WCNSS_PMU_CFG_IRIS_XO_CFG_STS)
+		cpu_relax();
+	printk(KERN_ERR "1\n");
+
+	val &= ~WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
+	val &= ~WCNSS_PMU_CFG_IRIS_XO_CFG;
+	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
+}
+
 static int wcn36xx_start(struct ieee80211_hw *hw)
 {
 	struct wcn36xx *wcn = hw->priv;
 	int ret;
 
 	wcn36xx_dbg(WCN36XX_DBG_MAC, "mac start\n");
+
+	wcn36xx_power_on(wcn);
 
 	/* SMD initialization */
 	ret = wcn36xx_smd_open(wcn);
@@ -970,6 +1037,7 @@ static int wcn36xx_init_ieee80211(struct wcn36xx *wcn)
 static int wcn36xx_platform_get_resources(struct wcn36xx *wcn,
 					  struct device *dev)
 {
+	const char *key;
 	u32 mmio[2];
 	int ret;
 
@@ -985,6 +1053,32 @@ static int wcn36xx_platform_get_resources(struct wcn36xx *wcn,
 	if (!wcn->rx_irq) {
 		wcn36xx_err("failed to get rx_irq\n");
 		return -ENOENT;
+	}
+
+	key = "qcom,tx-enable-gpios";
+	wcn->tx_enable_gpio = of_get_named_gpio(dev->of_node, key, 0);
+	if (wcn->tx_enable_gpio < 0) {
+		wcn36xx_err("failed to get %s\n", key);
+		return -ENOENT;
+	}
+
+	ret = gpio_request(wcn->tx_enable_gpio, "tx-enable");
+	if (ret < 0) {
+		wcn36xx_err("failed to request tx-enable gpio\n");
+		return -wcn->tx_enable_gpio;
+	}
+
+	key = "qcom,tx-rings-empty-gpios";
+	wcn->tx_rings_empty_gpio = of_get_named_gpio(dev->of_node, key, 0);
+	if (wcn->tx_rings_empty_gpio < 0) {
+		wcn36xx_err("failed to get %s\n", key);
+		return -ENOENT;
+	}
+	
+	ret = gpio_request(wcn->tx_rings_empty_gpio, "tx-rings-empty");
+	if (ret < 0) {
+		wcn36xx_err("failed to request tx-rings-empty gpio\n");
+		return -wcn->tx_enable_gpio;
 	}
 
 	/* Map the memory */
@@ -1004,8 +1098,10 @@ static int wcn36xx_platform_get_resources(struct wcn36xx *wcn,
 
 static int wcn36xx_msm_smd_open(struct wcn36xx *wcn, int (*cb)(struct qcom_smd_channel *, void *, size_t, void *))
 {
+#if 0
 	pr_err("wcn36xx_msm_smd_open\n");
 	wcn->smd_channel = qcom_smd_request_channel(wcn->smd_device, NULL, cb, wcn);
+#endif
 
 	return 0;
 }
@@ -1034,7 +1130,18 @@ static int wcn36xx_msm_smsm_change_state(struct wcn36xx *wcn, u32 clear_mask, u3
 {
 	pr_err("wcn36xx_msm_smsm_change_state(0x%x, 0x%x)\n", clear_mask, set_mask);
 
-	return qcom_smsm_change_state(wcn->smsm, clear_mask, set_mask);
+	if (clear_mask & WCN36XX_SMSM_WLAN_TX_ENABLE)
+		gpio_set_value(wcn->tx_enable_gpio, 0);
+	if (clear_mask & WCN36XX_SMSM_WLAN_TX_RINGS_EMPTY)
+		gpio_set_value(wcn->tx_rings_empty_gpio, 0);
+
+	if (set_mask & WCN36XX_SMSM_WLAN_TX_ENABLE)
+		gpio_set_value(wcn->tx_enable_gpio, 1);
+	if (set_mask & WCN36XX_SMSM_WLAN_TX_RINGS_EMPTY)
+		gpio_set_value(wcn->tx_rings_empty_gpio, 1);
+
+	return 0;
+//	return qcom_smsm_change_state(wcn->smsm, clear_mask, set_mask);
 }
 
 static struct wcn36xx_platform_ctrl_ops wcn36xx_ctrl_ops = {
@@ -1067,7 +1174,7 @@ static int wcn36xx_probe(struct qcom_smd_device *sdev)
 	wcn->ctrl_ops = &wcn36xx_ctrl_ops;
 
 	wcn->smd_device = sdev;
-	wcn->smsm = dev_get_qcom_smsm(NULL);
+	wcn->smd_channel = sdev->channel;
 
 	mutex_init(&wcn->hal_mutex);
 
@@ -1094,7 +1201,7 @@ out_wq:
 out_err:
 	return ret;
 }
-static int wcn36xx_remove(struct qcom_smd_device *sdev)
+static void wcn36xx_remove(struct qcom_smd_device *sdev)
 {
 	struct ieee80211_hw *hw = dev_get_drvdata(&sdev->dev);
 	struct wcn36xx *wcn = hw->priv;
@@ -1106,8 +1213,6 @@ static int wcn36xx_remove(struct qcom_smd_device *sdev)
 	ieee80211_unregister_hw(hw);
 	iounmap(wcn->mmio);
 	ieee80211_free_hw(hw);
-
-	return 0;
 }
 
 static const struct of_device_id wcn36xx_of_match[] = {
@@ -1120,6 +1225,7 @@ MODULE_DEVICE_TABLE(of, wcn36xx_of_match);
 static struct qcom_smd_driver wcn36xx_driver = {
 	.probe      = wcn36xx_probe,
 	.remove     = wcn36xx_remove,
+	.callback = wcn36xx_smd_rsp_process,
 	.driver         = {
 		.name   = "wcn36xx",
 		.of_match_table = wcn36xx_of_match,
@@ -1127,18 +1233,7 @@ static struct qcom_smd_driver wcn36xx_driver = {
 	},
 };
 
-static int __init wcn36xx_init(void)
-{
-	register_qcom_smd_driver(&wcn36xx_driver);
-	return 0;
-}
-module_init(wcn36xx_init);
-
-static void __exit wcn36xx_exit(void)
-{
-	// unregister_qcom_smd_driver(&wcn36xx_driver);
-}
-module_exit(wcn36xx_exit);
+module_qcom_smd_driver(wcn36xx_driver);
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Eugene Krasnikov k.eugene.e@gmail.com");

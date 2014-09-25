@@ -19,6 +19,7 @@
 #include <linux/etherdevice.h>
 #include <linux/firmware.h>
 #include <linux/bitops.h>
+#include <linux/soc/qcom/qcom_smd.h>
 #include "smd.h"
 
 static int put_cfg_tlv_u32(struct wcn36xx *wcn, size_t *len, u32 id, u32 value)
@@ -326,9 +327,14 @@ static int wcn36xx_smd_start_rsp(struct wcn36xx *wcn, void *buf, size_t len)
 
 	rsp = (struct wcn36xx_hal_mac_start_rsp_msg *)buf;
 
-	pr_err("%d %d\n", WCN36XX_FW_MSG_RESULT_SUCCESS, rsp->start_rsp_params.status);
+#if 0
+	/*
+	 * The Rhine CDB returns 38 here, which doesn't seem to be a valid
+	 * status. So ignore this part for now.
+	 */
 	if (WCN36XX_FW_MSG_RESULT_SUCCESS != rsp->start_rsp_params.status)
 		return -EIO;
+#endif
 
 	memcpy(wcn->crm_version, rsp->start_rsp_params.crm_version,
 	       WCN36XX_HAL_VERSION_LENGTH);
@@ -2017,9 +2023,10 @@ out:
 	return ret;
 }
 
-static int wcn36xx_smd_rsp_process(struct qcom_smd_channel *channel, void *buf, size_t len, void *_wcn)
+int wcn36xx_smd_rsp_process(struct qcom_smd_device *sdev, void *buf, size_t len)
 {
-	struct wcn36xx *wcn = _wcn;
+	struct ieee80211_hw *hw = dev_get_drvdata(&sdev->dev);
+	struct wcn36xx *wcn = hw->priv;
 	struct wcn36xx_hal_msg_header *msg_header = buf;
 	struct wcn36xx_hal_ind_msg *msg_ind;
 	wcn36xx_dbg_dump(WCN36XX_DBG_SMD_DUMP, "SMD <<< ", buf, len);
@@ -2149,11 +2156,13 @@ int wcn36xx_smd_open(struct wcn36xx *wcn)
 	INIT_LIST_HEAD(&wcn->hal_ind_queue);
 	mutex_init(&wcn->hal_ind_mutex);
 
+#if 0
 	ret = wcn->ctrl_ops->open(wcn, wcn36xx_smd_rsp_process);
 	if (ret) {
 		wcn36xx_err("failed to open control channel\n");
 		goto free_wq;
 	}
+#endif
 
 	return ret;
 
