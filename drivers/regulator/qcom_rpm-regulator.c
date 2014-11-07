@@ -24,6 +24,7 @@
 #include <dt-bindings/mfd/qcom-rpm.h>
 
 #define MAX_REQUEST_LEN 2
+#define RPM_NUM_STATES	2
 
 struct request_member {
 	int		word;
@@ -61,13 +62,15 @@ struct qcom_rpm_reg {
 	const struct rpm_reg_parts *parts;
 
 	int resource;
-	u32 val[MAX_REQUEST_LEN];
+	u32 val[RPM_NUM_STATES][MAX_REQUEST_LEN];
 
 	int uV;
 	int is_enabled;
 
 	bool supports_force_mode_auto;
 	bool supports_force_mode_bypass;
+
+	bool rpm_assist;
 };
 
 static const struct rpm_reg_parts rpm8660_ldo_parts = {
@@ -188,19 +191,20 @@ static const struct regulator_linear_range ncp_ranges[] = {
 };
 
 static int rpm_reg_write(struct qcom_rpm_reg *vreg,
+			 int state,
 			 const struct request_member *req,
 			 const int value)
 {
 	if (WARN_ON((value << req->shift) & ~req->mask))
 		return -EINVAL;
 
-	vreg->val[req->word] &= ~req->mask;
-	vreg->val[req->word] |= value << req->shift;
+	vreg->val[state][req->word] &= ~req->mask;
+	vreg->val[state][req->word] |= value << req->shift;
 
 	return qcom_rpm_write(vreg->rpm,
-			      RPM_ACTIVE_STATE,
+			      state,
 			      vreg->resource,
-			      vreg->val,
+			      vreg->val[state],
 			      vreg->parts->request_len);
 }
 
@@ -222,8 +226,11 @@ static int rpm_reg_set_mV_sel(struct regulator_dev *rdev,
 
 	mutex_lock(&vreg->lock);
 	vreg->uV = uV;
-	if (vreg->is_enabled)
-		ret = rpm_reg_write(vreg, req, vreg->uV / 1000);
+	if (vreg->is_enabled) {
+		ret = rpm_reg_write(vreg, RPM_ACTIVE_STATE, req, vreg->uV / 1000);
+		if (!ret && vreg->rpm_assist)
+			ret = rpm_reg_write(vreg, RPM_SLEEP_STATE, req, vreg->uV / 1000);
+	}
 	mutex_unlock(&vreg->lock);
 
 	return ret;
@@ -247,8 +254,11 @@ static int rpm_reg_set_uV_sel(struct regulator_dev *rdev,
 
 	mutex_lock(&vreg->lock);
 	vreg->uV = uV;
-	if (vreg->is_enabled)
-		ret = rpm_reg_write(vreg, req, vreg->uV);
+	if (vreg->is_enabled) {
+		ret = rpm_reg_write(vreg, RPM_ACTIVE_STATE, req, vreg->uV);
+		if (!ret && vreg->rpm_assist)
+			ret = rpm_reg_write(vreg, RPM_SLEEP_STATE, req, vreg->uV);
+	}
 	mutex_unlock(&vreg->lock);
 
 	return ret;
@@ -266,13 +276,16 @@ static int rpm_reg_mV_enable(struct regulator_dev *rdev)
 	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
 	const struct rpm_reg_parts *parts = vreg->parts;
 	const struct request_member *req = &parts->mV;
+	int state;
 	int ret;
 
 	if (req->mask == 0)
 		return -EINVAL;
 
+	state = vreg->rpm_assist ? RPM_SLEEP_STATE : RPM_ACTIVE_STATE;
+
 	mutex_lock(&vreg->lock);
-	ret = rpm_reg_write(vreg, req, vreg->uV / 1000);
+	ret = rpm_reg_write(vreg, state, req, vreg->uV / 1000);
 	if (!ret)
 		vreg->is_enabled = 1;
 	mutex_unlock(&vreg->lock);
@@ -285,13 +298,16 @@ static int rpm_reg_uV_enable(struct regulator_dev *rdev)
 	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
 	const struct rpm_reg_parts *parts = vreg->parts;
 	const struct request_member *req = &parts->uV;
+	int state;
 	int ret;
 
 	if (req->mask == 0)
 		return -EINVAL;
 
+	state = vreg->rpm_assist ? RPM_SLEEP_STATE : RPM_ACTIVE_STATE;
+
 	mutex_lock(&vreg->lock);
-	ret = rpm_reg_write(vreg, req, vreg->uV);
+	ret = rpm_reg_write(vreg, state, req, vreg->uV);
 	if (!ret)
 		vreg->is_enabled = 1;
 	mutex_unlock(&vreg->lock);
@@ -304,13 +320,16 @@ static int rpm_reg_switch_enable(struct regulator_dev *rdev)
 	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
 	const struct rpm_reg_parts *parts = vreg->parts;
 	const struct request_member *req = &parts->enable_state;
+	int state;
 	int ret;
 
 	if (req->mask == 0)
 		return -EINVAL;
 
+	state = vreg->rpm_assist ? RPM_SLEEP_STATE : RPM_ACTIVE_STATE;
+
 	mutex_lock(&vreg->lock);
-	ret = rpm_reg_write(vreg, req, 1);
+	ret = rpm_reg_write(vreg, state, req, 1);
 	if (!ret)
 		vreg->is_enabled = 1;
 	mutex_unlock(&vreg->lock);
@@ -323,13 +342,16 @@ static int rpm_reg_mV_disable(struct regulator_dev *rdev)
 	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
 	const struct rpm_reg_parts *parts = vreg->parts;
 	const struct request_member *req = &parts->mV;
+	int state;
 	int ret;
 
 	if (req->mask == 0)
 		return -EINVAL;
 
+	state = vreg->rpm_assist ? RPM_SLEEP_STATE : RPM_ACTIVE_STATE;
+
 	mutex_lock(&vreg->lock);
-	ret = rpm_reg_write(vreg, req, 0);
+	ret = rpm_reg_write(vreg, state, req, 0);
 	if (!ret)
 		vreg->is_enabled = 0;
 	mutex_unlock(&vreg->lock);
@@ -342,13 +364,16 @@ static int rpm_reg_uV_disable(struct regulator_dev *rdev)
 	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
 	const struct rpm_reg_parts *parts = vreg->parts;
 	const struct request_member *req = &parts->uV;
+	int state;
 	int ret;
 
 	if (req->mask == 0)
 		return -EINVAL;
 
+	state = vreg->rpm_assist ? RPM_SLEEP_STATE : RPM_ACTIVE_STATE;
+
 	mutex_lock(&vreg->lock);
-	ret = rpm_reg_write(vreg, req, 0);
+	ret = rpm_reg_write(vreg, state, req, 0);
 	if (!ret)
 		vreg->is_enabled = 0;
 	mutex_unlock(&vreg->lock);
@@ -361,13 +386,16 @@ static int rpm_reg_switch_disable(struct regulator_dev *rdev)
 	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
 	const struct rpm_reg_parts *parts = vreg->parts;
 	const struct request_member *req = &parts->enable_state;
+	int state;
 	int ret;
 
 	if (req->mask == 0)
 		return -EINVAL;
 
+	state = vreg->rpm_assist ? RPM_SLEEP_STATE : RPM_ACTIVE_STATE;
+
 	mutex_lock(&vreg->lock);
-	ret = rpm_reg_write(vreg, req, 0);
+	ret = rpm_reg_write(vreg, state, req, 0);
 	if (!ret)
 		vreg->is_enabled = 0;
 	mutex_unlock(&vreg->lock);
@@ -590,8 +618,11 @@ static int rpm_reg_set(struct qcom_rpm_reg *vreg,
 	if (req->mask == 0 || (value << req->shift) & ~req->mask)
 		return -EINVAL;
 
-	vreg->val[req->word] &= ~req->mask;
-	vreg->val[req->word] |= value << req->shift;
+	vreg->val[RPM_ACTIVE_STATE][req->word] &= ~req->mask;
+	vreg->val[RPM_ACTIVE_STATE][req->word] |= value << req->shift;
+
+	vreg->val[RPM_SLEEP_STATE][req->word] &= ~req->mask;
+	vreg->val[RPM_SLEEP_STATE][req->word] |= value << req->shift;
 
 	return 0;
 }
@@ -689,6 +720,9 @@ static int rpm_reg_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
+
+	key = "qcom,rpm-assisted-disable";
+	vreg->rpm_assist = of_property_read_bool(pdev->dev.of_node, key);
 
 	if (vreg->parts->freq.mask) {
 		ret = rpm_reg_of_parse_freq(&pdev->dev, vreg);

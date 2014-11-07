@@ -112,6 +112,13 @@ of valid subnodes that can operate on these resources.
 	Definition: select that the power supply should operate in hysteretic
 		    mode, instead of the default pwm mode
 
+- qcom,rpm-assisted-disable:
+	Usage: optional
+	Value type: <empty>
+	Definition: select that the regulator is supplying the active CPU(s)
+		    and can only be disabled with the assistans from the RPM
+		    after going to sleep
+
 Standard regulator bindings are used inside switch mode power supply subnodes.
 Check Documentation/devicetree/bindings/regulator/regulator.txt for more
 details.
@@ -160,6 +167,13 @@ details.
 						qcom,rpm-pm8921-nldo,
 						qcom,rpm-pm8921-nldo1200
 
+- qcom,rpm-assisted-disable:
+	Usage: optional
+	Value type: <empty>
+	Definition: select that the regulator is supplying the active CPU(s)
+		    and can only be disabled with the assistans from the RPM
+		    after going to sleep
+
 Standard regulator bindings are used inside switch low-dropout regulator
 subnodes.  Check Documentation/devicetree/bindings/regulator/regulator.txt for
 more details.
@@ -190,6 +204,13 @@ more details.
 		    2740000, 2400000, 2130000, 1920000, 1750000, 1600000,
 		    1480000, 1370000, 1280000, 1200000
 
+- qcom,rpm-assisted-disable:
+	Usage: optional
+	Value type: <empty>
+	Definition: select that the regulator is supplying the active CPU(s)
+		    and can only be disabled with the assistans from the RPM
+		    after going to sleep
+
 Standard regulator bindings are used inside negative charge pump regulator
 subnodes.  Check Documentation/devicetree/bindings/regulator/regulator.txt for
 more details.
@@ -214,6 +235,13 @@ more details.
 		    QCOM_RPM_PM8901_MVS,
 		    QCOM_RPM_PM8921_LVS1 - QCOM_RPM_PM8921_LVS7,
 		    QCOM_RPM_PM8921_MVS
+
+- qcom,rpm-assisted-disable:
+	Usage: optional
+	Value type: <empty>
+	Definition: select that the regulator is supplying the active CPU(s)
+		    and can only be disabled with the assistans from the RPM
+		    after going to sleep
 
 = EXAMPLE
 
