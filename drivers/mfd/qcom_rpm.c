@@ -66,7 +66,6 @@ struct qcom_rpm {
 #define RPM_ACK_SELECTOR	23
 #define RPM_SELECT_SIZE		7
 
-#define RPM_ACTIVE_STATE	BIT(0)
 #define RPM_NOTIFICATION	BIT(30)
 #define RPM_REJECTED		BIT(31)
 
@@ -337,7 +336,11 @@ struct qcom_rpm *dev_get_qcom_rpm(struct device *dev)
 }
 EXPORT_SYMBOL(dev_get_qcom_rpm);
 
-int qcom_rpm_write(struct qcom_rpm *rpm, int resource, u32 *buf, size_t count)
+int qcom_rpm_write(struct qcom_rpm *rpm,
+		   int state,
+		   int resource,
+		   u32 *buf,
+		   size_t count)
 {
 	const struct qcom_rpm_resource *res;
 	const struct qcom_rpm_data *data = rpm->data;
@@ -364,8 +367,7 @@ int qcom_rpm_write(struct qcom_rpm *rpm, int resource, u32 *buf, size_t count)
 			       RPM_CTRL_REG(rpm, RPM_REQ_SELECT + i));
 	}
 
-	writel_relaxed(RPM_ACTIVE_STATE,
-		       RPM_CTRL_REG(rpm, RPM_REQUEST_CONTEXT));
+	writel_relaxed(BIT(state), RPM_CTRL_REG(rpm, RPM_REQUEST_CONTEXT));
 
 	reinit_completion(&rpm->ack);
 	regmap_write(rpm->ipc_regmap, rpm->ipc_offset, BIT(rpm->ipc_bit));
