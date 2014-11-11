@@ -254,61 +254,12 @@ static void wcn36xx_detect_chip_version(struct wcn36xx *wcn)
 #define WCNSS_PMU_CFG_IRIS_XO_MODE         0x6
 #define WCNSS_PMU_CFG_IRIS_XO_MODE_48      (3 << 1)
 
-static void wcn36xx_power_on(struct wcn36xx *wcn)
-{
-	u32 val;
-
-	return;
-
-	printk(KERN_ERR "1\n");
-
-	val = readl(wcn->mmio + PRONTO_SPARE_OFFSET);
-	val |= NVBIN_DLND_BIT;
-	writel(val, wcn->mmio + PRONTO_SPARE_OFFSET);
-	
-
-	writel(0, wcn->mmio + PRONTO_PMU_OFFSET);
-	val = readl(wcn->mmio + PRONTO_PMU_OFFSET);
-	val |= WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
-	val |= WCNSS_PMU_CFG_IRIS_XO_EN;
-	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
-
-	val &= ~WCNSS_PMU_CFG_IRIS_XO_MODE;
-	val |= WCNSS_PMU_CFG_IRIS_XO_MODE_48;
-	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
-
-	val |= WCNSS_PMU_CFG_IRIS_RESET;
-	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
-
-	printk(KERN_ERR "1\n");
-	while (readl(wcn->mmio + PRONTO_PMU_OFFSET) & WCNSS_PMU_CFG_IRIS_RESET_STS)
-		cpu_relax();
-	printk(KERN_ERR "1\n");
-
-	val &= ~WCNSS_PMU_CFG_IRIS_RESET;
-	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
-
-	val |= WCNSS_PMU_CFG_IRIS_XO_CFG;
-	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
-	
-	printk(KERN_ERR "1\n");
-	while (readl(wcn->mmio + PRONTO_PMU_OFFSET) & WCNSS_PMU_CFG_IRIS_XO_CFG_STS)
-		cpu_relax();
-	printk(KERN_ERR "1\n");
-
-	val &= ~WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
-	val &= ~WCNSS_PMU_CFG_IRIS_XO_CFG;
-	writel(val, wcn->mmio + PRONTO_PMU_OFFSET);
-}
-
 static int wcn36xx_start(struct ieee80211_hw *hw)
 {
 	struct wcn36xx *wcn = hw->priv;
 	int ret;
 
 	wcn36xx_dbg(WCN36XX_DBG_MAC, "mac start\n");
-
-	wcn36xx_power_on(wcn);
 
 	/* SMD initialization */
 	ret = wcn36xx_smd_open(wcn);
