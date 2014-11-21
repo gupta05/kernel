@@ -117,7 +117,7 @@ static int wcnss_ctrl_callback(struct qcom_smd_device *qsdev,
 	struct wcnss_ctrl *wcnss = dev_get_drvdata(&qsdev->dev);
 	struct smd_msg_hdr *hdr = data;
 
-	print_hex_dump(KERN_DEBUG, "WCNSS_CTRL <<<: ", DUMP_PREFIX_OFFSET, 16, 1, data, count, true);
+	// print_hex_dump(KERN_DEBUG, "WCNSS_CTRL <<<: ", DUMP_PREFIX_OFFSET, 16, 1, data, count, true);
 
 	switch (hdr->type) {
 	case WCNSS_VERSION_RSP:
@@ -148,7 +148,7 @@ static int wcnss_ctrl_send_version_req(struct wcnss_ctrl *wcnss)
 	msg.type = WCNSS_VERSION_REQ;
 	msg.len = sizeof(msg);
 
-	print_hex_dump(KERN_DEBUG, "WCNSS_CTRL >>>: ", DUMP_PREFIX_OFFSET, 16, 1, &msg, sizeof(msg), true);
+	// print_hex_dump(KERN_DEBUG, "WCNSS_CTRL >>>: ", DUMP_PREFIX_OFFSET, 16, 1, &msg, sizeof(msg), true);
 	return qcom_smd_send(wcnss->channel, &msg, sizeof(msg));
 }
 
@@ -192,7 +192,7 @@ static void wcnss_download_nv(struct work_struct *work)
 
 		memcpy(req->payload, nv->table + offset, req->nv_img_buffer_size);
 
-		print_hex_dump(KERN_DEBUG, "WCNSS_CTRL >>>: ", DUMP_PREFIX_OFFSET, 16, 1, req, req->header.len, true);
+		// print_hex_dump(KERN_DEBUG, "WCNSS_CTRL >>>: ", DUMP_PREFIX_OFFSET, 16, 1, req, req->header.len, true);
 		ret = qcom_smd_send(wcnss->channel, (void*)req, req->header.len);
 		if (ret) {
 			dev_err(wcnss->dev, "failed to send smd packet\n");
