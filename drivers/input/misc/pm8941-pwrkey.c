@@ -21,21 +21,86 @@
 #include <linux/regmap.h>
 #include <linux/log2.h>
 #include <linux/of.h>
+#include <linux/delay.h>
+#include <linux/notifier.h>
+#include <linux/reboot.h>
 
+#define PON_REV2		0x01
 #define PON_RT_STS		0x10
+#define PON_PS_HOLD_RST_CTL	0x5a
+#define PON_PS_HOLD_RST_CTL2	0x5b
 #define PON_PULL_CTL		0x70
 #define PON_DBC_CTL		0x71
 
 #define PON_DBC_DELAY_MASK	0x7
 #define PON_KPDPWR_N_SET	BIT(0)
 #define PON_KPDPWR_PULL_UP	BIT(1)
+#define PON_PS_HOLD_ENABLE	BIT(7)
+#define PON_PS_HOLD_TYPE_SHUTDOWN	0x04
+#define PON_PS_HOLD_TYPE_HARD_RESET	0x07
+#define PON_PS_HOLD_TYPE_MASK		0x0f
 
 struct pm8941_pwrkey {
+	struct device *dev;
 	int irq;
 	u32 baseaddr;
 	struct regmap *regmap;
 	struct input_dev *input;
+
+	unsigned int revision;
+	struct notifier_block reboot_notifier;
 };
+
+static int pm8941_reboot_notify(struct notifier_block *nb,
+				unsigned long code, void *unused)
+{
+	struct pm8941_pwrkey *pwrkey = container_of(nb, struct pm8941_pwrkey,
+						    reboot_notifier);
+	unsigned int enable_reg;
+	unsigned int reset_type;
+	int rc;
+
+	/* PMICs with revision 0 have the enable bit in same register as ctrl */
+	if (pwrkey->revision == 0)
+		enable_reg = PON_PS_HOLD_RST_CTL;
+	else
+		enable_reg = PON_PS_HOLD_RST_CTL2;
+
+	rc = regmap_update_bits(pwrkey->regmap, pwrkey->baseaddr + enable_reg,
+				PON_PS_HOLD_ENABLE, 0);
+	if (rc)
+		dev_err(pwrkey->dev, "unable to clear ps hold reset enable\n");
+
+	/*
+	 * Updates to PON_PS_HOLD_RST_CTL2 requires 3 sleep cycles between
+	 * writes.
+	 */
+	udelay(500);
+
+	switch (code) {
+	case SYS_HALT:
+	case SYS_POWER_OFF:
+		reset_type = PON_PS_HOLD_TYPE_SHUTDOWN;
+		break;
+	case SYS_RESTART:
+	default:
+		reset_type = PON_PS_HOLD_TYPE_HARD_RESET;
+		break;
+	};
+
+	rc = regmap_update_bits(pwrkey->regmap,
+				pwrkey->baseaddr + PON_PS_HOLD_RST_CTL,
+				PON_PS_HOLD_TYPE_MASK, reset_type);
+	if (rc)
+		dev_err(pwrkey->dev, "unable to set ps hold reset type\n");
+
+	rc = regmap_update_bits(pwrkey->regmap, pwrkey->baseaddr + enable_reg,
+				PON_PS_HOLD_ENABLE, PON_PS_HOLD_ENABLE);
+	if (rc)
+		dev_err(pwrkey->dev, "unable to re-set enable\n");
+
+	return NOTIFY_DONE;
+}
 
 static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 {
@@ -99,6 +164,8 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 	if (!pwrkey)
 		return -ENOMEM;
 
+	pwrkey->dev = &pdev->dev;
+
 	pwrkey->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!pwrkey->regmap) {
 		dev_err(&pdev->dev, "failed to locate regmap\n");
@@ -114,6 +181,13 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 	rc = of_property_read_u32(pdev->dev.of_node, "reg", &pwrkey->baseaddr);
 	if (rc)
 		return rc;
+
+	rc = regmap_read(pwrkey->regmap, pwrkey->baseaddr + PON_REV2,
+			 &pwrkey->revision);
+	if (rc) {
+		dev_err(&pdev->dev, "failed to set debounce: %d\n", rc);
+		return rc;
+	}
 
 	pwrkey->input = devm_input_allocate_device(&pdev->dev);
 	if (!pwrkey->input) {
@@ -161,6 +235,14 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	pwrkey->reboot_notifier.notifier_call = pm8941_reboot_notify,
+	rc = register_reboot_notifier(&pwrkey->reboot_notifier);
+	if (rc) {
+		dev_err(&pdev->dev, "failed to register reboot notifier: %d\n",
+			rc);
+		return rc;
+	}
+
 	platform_set_drvdata(pdev, pwrkey);
 	device_init_wakeup(&pdev->dev, 1);
 
@@ -169,7 +251,10 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 
 static int pm8941_pwrkey_remove(struct platform_device *pdev)
 {
+	struct pm8941_pwrkey *pwrkey = platform_get_drvdata(pdev);
+
 	device_init_wakeup(&pdev->dev, 0);
+	unregister_reboot_notifier(&pwrkey->reboot_notifier);
 
 	return 0;
 }
