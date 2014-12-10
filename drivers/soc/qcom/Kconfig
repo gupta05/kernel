@@ -25,3 +25,9 @@ config QCOM_SMEM
 	  The driver provides an interface to items in a heap shared among all
 	  processors in a Qualcomm platform and is used for exchanging
 	  information as well as a fifo based communication mechanism (SMD).
+
+config QCOM_IPCRTR_STUB
+	tristate "Qualcomm IPCRTR stub driver"
+	depends on QCOM_SMD
+	help
+	  Stub driver to bring the IPCRTR channel up.
