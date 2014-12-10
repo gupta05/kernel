@@ -251,7 +251,7 @@ static int qcom_smsm_probe(struct platform_device *pdev)
 	print_hex_dump(KERN_DEBUG, "raw data: ", DUMP_PREFIX_OFFSET, 16, 1, smsm->shared_state, smsm->shared_state_size, true);
 
 	for_each_child_of_node(pdev->dev.of_node, node) {
-		key = "qcom,state";
+		key = "reg";
 		ret = of_property_read_u32(node, key, &sid);
 		if (ret || sid >= SMSM_MAX_STATES) {
 			dev_err(&pdev->dev, "smsm state missing %s\n", key);
