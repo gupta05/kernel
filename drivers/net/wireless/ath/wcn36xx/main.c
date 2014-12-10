@@ -1156,10 +1156,16 @@ static void wcn36xx_remove(struct qcom_smd_device *sdev)
 	wcn36xx_dbg(WCN36XX_DBG_MAC, "wcn36xx remove\n");
 
 	release_firmware(wcn->nv);
-	mutex_destroy(&wcn->hal_mutex);
 
 	ieee80211_unregister_hw(hw);
+
+	gpio_free(wcn->tx_enable_gpio);
+	gpio_free(wcn->tx_rings_empty_gpio);
+
 	iounmap(wcn->mmio);
+
+	mutex_destroy(&wcn->hal_mutex);
+
 	ieee80211_free_hw(hw);
 }
 
