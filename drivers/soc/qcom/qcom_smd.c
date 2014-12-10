@@ -94,6 +94,8 @@ struct qcom_smd_edge {
 	struct device_node *of_node;
 	unsigned edge_id;
 
+	struct list_head edges;
+
 	struct regmap *ipc_regmap;
 	int ipc_offset;
 	int ipc_bit;
@@ -104,6 +106,8 @@ struct qcom_smd_edge {
 	struct work_struct channel_scan_work;
 	struct work_struct state_change_work;
 };
+
+static LIST_HEAD(all_edges);
 
 /**
  * struct qcom_smd_channel - smd channel struct
@@ -869,6 +873,25 @@ static void qcom_channel_state_worker(struct work_struct *work)
 	}
 }
 
+void qcom_smd_reset_edge(struct device_node *node)
+{
+	struct qcom_smd_channel *channel;
+	struct qcom_smd_edge *edge;
+
+	list_for_each_entry(edge, &all_edges, edges) {
+		if (edge->of_node != node)
+			continue;
+
+		list_for_each_entry(channel, &edge->channels, list) {
+			if (channel->state == SMD_CHANNEL_CLOSED)
+				continue;
+
+			channel->state = SMD_CHANNEL_CLOSING;
+			qcom_smd_destroy_device(channel);
+		}
+	}
+}
+
 /*
  * The edge interrupts are triggered by the remote processor on state changes,
  * channel info updates or when new channels are created.
@@ -996,6 +1019,8 @@ static int qcom_smd_probe(struct platform_device *pdev)
 		ret = qcom_smd_parse_edge(&pdev->dev, node, edge);
 		if (ret)
 			continue;
+
+		list_add(&edge->edges, &all_edges);
 
 		schedule_work(&edge->channel_scan_work);
 	}
