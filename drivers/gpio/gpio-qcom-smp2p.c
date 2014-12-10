@@ -75,6 +75,8 @@ struct smp2p_entry {
 	u32 last_value;
 	struct irq_domain *domain;
 	DECLARE_BITMAP(irq_mask, 32);
+	DECLARE_BITMAP(irq_rising, 32);
+	DECLARE_BITMAP(irq_falling, 32);
 
 	struct gpio_chip chip;
 };
@@ -116,10 +118,9 @@ static irqreturn_t qcom_smp2p_intr(int irq, void *data)
 	size_t size;
 	int irq_pin;
 	u32 status;
+	u32 val;
 	int ret;
 	int i;
-
-	printk(KERN_ERR "INTR!\n");
 
 	mutex_lock(&smp2p->lock);
 
@@ -152,16 +153,25 @@ static irqreturn_t qcom_smp2p_intr(int irq, void *data)
 			continue;
 
 		entry_v1 = entry->entry;
+		val = entry_v1->entry;
 
-		status = entry_v1->entry ^ entry->last_value;
-		entry->last_value = entry_v1->entry;
+		status = val ^ entry->last_value;
+		entry->last_value = val;
 
 		for_each_set_bit(i, entry->irq_mask, 32) {
 			if (!(status & BIT(i)))
 				continue;
 
 			irq_pin = irq_find_mapping(entry->domain, i);
-                        handle_nested_irq(irq_pin);
+
+			if (val & BIT(i)) {
+				if (test_bit(i, entry->irq_rising))
+					handle_nested_irq(irq_pin);
+			} else {
+				if (test_bit(i, entry->irq_falling))
+					handle_nested_irq(irq_pin);
+			}
+
 		}
 	}
 
@@ -193,10 +203,32 @@ static void smp2p_unmask_irq(struct irq_data *irqd)
 	set_bit(irq, entry->irq_mask);
 }
 
+static int smp2p_set_irq_type(struct irq_data *irqd, unsigned int type)
+{
+	struct smp2p_entry *entry = irq_data_get_irq_chip_data(irqd);
+	irq_hw_number_t irq = irqd_to_hwirq(irqd);
+
+	if (!(type & IRQ_TYPE_EDGE_BOTH))
+		return -EINVAL;
+
+	if (type & IRQ_TYPE_EDGE_RISING)
+		set_bit(irq, entry->irq_rising);
+	else
+		clear_bit(irq, entry->irq_rising);
+
+	if (type & IRQ_TYPE_EDGE_FALLING)
+		set_bit(irq, entry->irq_falling);
+	else
+		clear_bit(irq, entry->irq_falling);
+
+	return 0;
+}
+
 static struct irq_chip smp2p_irq_chip = {
 	.name           = "smp2p",
 	.irq_mask       = smp2p_mask_irq,
 	.irq_unmask     = smp2p_unmask_irq,
+	.irq_set_type	= smp2p_set_irq_type,
 };
 
 static int smp2p_irq_map(struct irq_domain *d, unsigned int irq, irq_hw_number_t hw)
