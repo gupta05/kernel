@@ -1066,10 +1066,18 @@ static int wcn36xx_msm_smd_send_and_wait(struct wcn36xx *wcn, char *buf, size_t 
 
 static int wcn36xx_msm_get_hw_mac(u8 *addr)
 {
+#if 0
 	static const u8 qcom_oui[3] = {0x00, 0x0A, 0xF5};
 
 	memcpy(addr, qcom_oui, 3);
 	get_random_bytes(addr + 3, 3);
+#endif
+	addr[0] = 0x18;
+	addr[1] = 0x00;
+	addr[2] = 0x2d;
+	addr[3] = 0x88;
+	addr[4] = 0x9c;
+	addr[5] = 0xab;
 
 	return 0;
 }
