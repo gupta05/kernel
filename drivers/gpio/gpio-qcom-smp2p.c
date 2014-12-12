@@ -33,48 +33,36 @@
 #define SMP2P_MAX_ENTRY 16
 #define SMP2P_MAX_ENTRY_NAME 16
 
-#define SMP2P_MAGIC 0x504D5324
+#define SMP2P_FEATURE_SSR_ACK 0x1
 
-/**
- * struct smp2p_smem - SMP2P SMEM Item Header
- *
- * @magic:  Set to "$SMP" -- used for identification / debug purposes
- * @feature_version:  Feature and version fields
- * @rem_loc_proc_id:  Remote (31:16) and Local (15:0) processor IDs
- * @valid_total_ent:  Valid (31:16) and total (15:0) entries
- * @flags:  Flags (bits 31:2 reserved)
- */
-struct smp2p_smem {
+#define SMP2P_MAGIC 0x504d5324
+
+struct smp2p_smem_item {
 	u32 magic;
 	u8 version;
-	u8 features[3];
-	u16 local_id;
-	u16 remote_id;
+	unsigned features:24;
+	u16 local_pid;
+	u16 remote_pid;
 	u16 total_entries;
 	u16 valid_entries;
 	u32 flags;
-};
 
-struct smp2p_entry_v1 {
-	u8 name[SMP2P_MAX_ENTRY_NAME];
-	u32 entry;
-};
-
-struct smp2p_smem_item {
-	struct smp2p_smem header;
-	struct smp2p_entry_v1 entries[SMP2P_MAX_ENTRY];
-};
+	struct {
+		u8 name[SMP2P_MAX_ENTRY_NAME];
+		u32 value;
+	} entries[SMP2P_MAX_ENTRY];
+} __packed;
 
 struct smp2p_entry {
 	struct list_head node;
 	struct qcom_smp2p *smp2p;
 
 	const char *name;
-	struct smp2p_entry_v1 *entry;
-
+	u32 *value;
 	u32 last_value;
+
 	struct irq_domain *domain;
-	DECLARE_BITMAP(irq_mask, 32);
+	DECLARE_BITMAP(irq_enabled, 32);
 	DECLARE_BITMAP(irq_rising, 32);
 	DECLARE_BITMAP(irq_falling, 32);
 
@@ -87,11 +75,13 @@ struct qcom_smp2p {
 	struct qcom_smem *smem;
 	struct smp2p_smem_item *smem_out;
 	struct smp2p_smem_item *smem_in;
+	unsigned smem_out_id;
+	unsigned smem_in_id;
 
-	int local_id;
-	int remote_id;
+	unsigned valid_entries;
 
-	int irq;
+	unsigned local_pid;
+	unsigned remote_pid;
 
 	struct regmap *ipc_regmap;
 	int ipc_offset;
@@ -111,10 +101,9 @@ static void qcom_smp2p_kick(struct qcom_smp2p *smp2p)
 
 static irqreturn_t qcom_smp2p_intr(int irq, void *data)
 {
-	struct qcom_smp2p *smp2p = data;
-	struct smp2p_entry_v1 *entry_v1;
-	struct smp2p_entry *entry;
 	struct smp2p_smem_item *in;
+	struct smp2p_entry *entry;
+	struct qcom_smp2p *smp2p = data;
 	size_t size;
 	int irq_pin;
 	u32 status;
@@ -125,40 +114,37 @@ static irqreturn_t qcom_smp2p_intr(int irq, void *data)
 	mutex_lock(&smp2p->lock);
 
 	if (!smp2p->smem_in) {
-		ret = qcom_smem_get(smp2p->smem, smp2p->remote_id, (void**)&smp2p->smem_in, &size);
-		if (ret < 0 || size != ALIGN(sizeof(struct smp2p_smem_item), 8)) {
-			dev_err(smp2p->dev, "Unable to acquire remote smp2p item (%d): %d (%d %d)\n", smp2p->remote_id, ret, size, sizeof(struct smp2p_smem_item));
-			smp2p->smem_in = NULL;
-		}
+		ret = qcom_smem_get(smp2p->smem, smp2p->smem_in_id, (void**)&in, &size);
+		if (ret < 0 || size != ALIGN(sizeof(*in), 8))
+			dev_err(smp2p->dev, "Unable to acquire remote smp2p item\n");
+		else
+			smp2p->smem_in = in;
 	}
 
-	if (smp2p->smem_in /* XXX: && valid entries have changed */) {
-		list_for_each_entry(entry, &smp2p->inbound, node) {
-			if (entry->entry)
-				continue;
+	if (smp2p->smem_in) {
+		in = smp2p->smem_in;
 
-			in = smp2p->smem_in;
-
-			for (i = 0; i < in->header.valid_entries; i++) {
-				if (strcmp(in->entries[i].name, entry->name) == 0) {
-					entry->entry = &in->entries[i];
+		for (i = smp2p->valid_entries; i < in->valid_entries; i++) {
+			list_for_each_entry(entry, &smp2p->inbound, node) {
+				if (!strcmp(in->entries[i].name, entry->name)) {
+					entry->value = &in->entries[i].value;
 					break;
 				}
 			}
 		}
+		smp2p->valid_entries = in->valid_entries;
 	}
 
 	list_for_each_entry(entry, &smp2p->inbound, node) {
-		if (!entry->entry)
+		if (!entry->value)
 			continue;
 
-		entry_v1 = entry->entry;
-		val = entry_v1->entry;
+		val = *entry->value;
 
 		status = val ^ entry->last_value;
 		entry->last_value = val;
 
-		for_each_set_bit(i, entry->irq_mask, 32) {
+		for_each_set_bit(i, entry->irq_enabled, 32) {
 			if (!(status & BIT(i)))
 				continue;
 
@@ -175,14 +161,6 @@ static irqreturn_t qcom_smp2p_intr(int irq, void *data)
 		}
 	}
 
-#if 0
-	if (smp2p->smem_out)
-		print_hex_dump(KERN_DEBUG, "local:  ", DUMP_PREFIX_OFFSET, 16, 1, smp2p->smem_out, sizeof(struct smp2p_smem_item), true);
-
-	if (smp2p->smem_in)
-		print_hex_dump(KERN_DEBUG, "remote: ", DUMP_PREFIX_OFFSET, 16, 1, smp2p->smem_in, sizeof(struct smp2p_smem_item), true);
-#endif
-
 	mutex_unlock(&smp2p->lock);
 	return IRQ_HANDLED;
 }
@@ -192,7 +170,7 @@ static void smp2p_mask_irq(struct irq_data *irqd)
 	struct smp2p_entry *entry = irq_data_get_irq_chip_data(irqd);
 	irq_hw_number_t irq = irqd_to_hwirq(irqd);
 
-	clear_bit(irq, entry->irq_mask);
+	clear_bit(irq, entry->irq_enabled);
 }
 
 static void smp2p_unmask_irq(struct irq_data *irqd)
@@ -200,7 +178,7 @@ static void smp2p_unmask_irq(struct irq_data *irqd)
 	struct smp2p_entry *entry = irq_data_get_irq_chip_data(irqd);
 	irq_hw_number_t irq = irqd_to_hwirq(irqd);
 
-	set_bit(irq, entry->irq_mask);
+	set_bit(irq, entry->irq_enabled);
 }
 
 static int smp2p_set_irq_type(struct irq_data *irqd, unsigned int type)
@@ -258,9 +236,9 @@ static int smp2p_gpio_direction_output(struct gpio_chip *chip, unsigned offset, 
 	struct smp2p_entry *entry = container_of(chip, struct smp2p_entry, chip);
 
 	if (value)
-		entry->entry->entry |= BIT(offset);
+		*entry->value |= BIT(offset);
 	else
-		entry->entry->entry &= ~BIT(offset);
+		*entry->value &= ~BIT(offset);
 
 	qcom_smp2p_kick(entry->smp2p);
 
@@ -299,41 +277,42 @@ static int qcom_smp2p_outgoing_entry(struct qcom_smp2p *smp2p,
 
 static int qcom_smp2p_alloc_outgoing(struct qcom_smp2p *smp2p)
 {
-	struct smp2p_entry_v1 *entry_v1;
+	struct smp2p_smem_item *out;
 	struct smp2p_entry *entry;
-	struct smp2p_smem *hdr;
 	int ret;
 
-	ret = qcom_smem_alloc(smp2p->smem, smp2p->local_id, sizeof(struct smp2p_smem_item));
+	ret = qcom_smem_alloc(smp2p->smem, smp2p->smem_out_id, sizeof(*out));
 	if (ret < 0 && ret != -EEXIST) {
 		dev_err(smp2p->dev, "unable to allocate local smp2p item\n");
 		return ret;
 	}
 
-	ret = qcom_smem_get(smp2p->smem, smp2p->local_id, (void**)&smp2p->smem_out, NULL);
+	ret = qcom_smem_get(smp2p->smem, smp2p->smem_out_id, (void**)&out, NULL);
 	if (ret < 0) {
 		dev_err(smp2p->dev, "Unable to acquire local smp2p item\n");
 		return ret;
 	}
 
-	memset(smp2p->smem_out, 0, sizeof(struct smp2p_smem_item));
-	hdr = &smp2p->smem_out->header;
-	hdr->magic = SMP2P_MAGIC;
-	hdr->local_id = 0;
-	hdr->remote_id = 4;
-	hdr->total_entries = SMP2P_MAX_ENTRY;
-	hdr->valid_entries = 0;
+	smp2p->smem_out = out;
+
+	memset(out, 0, sizeof(*out));
+	out->magic = SMP2P_MAGIC;
+	out->local_pid = smp2p->local_pid;
+	out->remote_pid = smp2p->remote_pid;
+	out->total_entries = SMP2P_MAX_ENTRY;
+	out->valid_entries = 0;
 
 	wmb();
-	hdr->version = 1;
+	out->version = 1;
 
 	qcom_smp2p_kick(smp2p);
 
 	list_for_each_entry(entry, &smp2p->outbound, node) {
-		entry_v1 = &smp2p->smem_out->entries[hdr->valid_entries++];
-		strlcpy(entry_v1->name, entry->name, sizeof(entry_v1->name));
+		entry->value = &out->entries[out->valid_entries].value;
+		strlcpy(out->entries[out->valid_entries].name, entry->name,
+			SMP2P_MAX_ENTRY_NAME);
 
-		entry->entry = entry_v1;
+		out->valid_entries++;
 	}
 
 	qcom_smp2p_kick(smp2p);
@@ -341,115 +320,168 @@ static int qcom_smp2p_alloc_outgoing(struct qcom_smp2p *smp2p)
 	return 0;
 }
 
-static int qcom_smp2p_probe(struct platform_device *pdev)
+static int smp2p_probe_ipc(struct qcom_smp2p *smp2p)
 {
-	struct device_node *syscon_np;
-	struct smp2p_entry *entry;
-	struct device_node *node;
-	struct qcom_smp2p *smp2p;
-	u32 regs[2];
-	char *key;
+	struct device_node *syscon;
+	struct device *dev = smp2p->dev;
+	const char *key;
 	int ret;
 
-	smp2p = devm_kzalloc(&pdev->dev, sizeof(*smp2p), GFP_KERNEL);
-	if (!smp2p) {
-		dev_err(&pdev->dev, "failed to allocate struct smp2p\n");
-		return -ENOMEM;
-	}
-	smp2p->dev = &pdev->dev;
-
-	mutex_init(&smp2p->lock);
-
-	ret = of_property_read_u32_array(pdev->dev.of_node, "qcom,smem-ids", regs, 2);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "unable to parse qcom,smem-ids property\n");
-		return -EINVAL;
-	}
-	smp2p->local_id = regs[0];
-	smp2p->remote_id = regs[1];
-
-	syscon_np = of_parse_phandle(pdev->dev.of_node, "qcom,ipc", 0);
-	if (!syscon_np) {
-		dev_err(&pdev->dev, "no qcom,ipc node\n");
+	syscon = of_parse_phandle(dev->of_node, "qcom,ipc", 0);
+	if (!syscon) {
+		dev_err(dev, "no qcom,ipc node\n");
 		return -ENODEV;
 	}
 
-	smp2p->ipc_regmap = syscon_node_to_regmap(syscon_np);
+	smp2p->ipc_regmap = syscon_node_to_regmap(syscon);
 	if (IS_ERR(smp2p->ipc_regmap))
 		return PTR_ERR(smp2p->ipc_regmap);
 
 	key = "qcom,ipc";
-	ret = of_property_read_u32_index(pdev->dev.of_node, key, 1, &smp2p->ipc_offset);
+	ret = of_property_read_u32_index(dev->of_node, key, 1, &smp2p->ipc_offset);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "no offset in %s\n", key);
+		dev_err(dev, "no offset in %s\n", key);
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32_index(pdev->dev.of_node, key, 2, &smp2p->ipc_bit);
+	ret = of_property_read_u32_index(dev->of_node, key, 2, &smp2p->ipc_bit);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "no bit in %s\n", key);
+		dev_err(dev, "no bit in %s\n", key);
 		return -EINVAL;
 	}
 
-	smp2p->smem = of_get_qcom_smem(pdev->dev.of_node);
+	return 0;
+}
+
+static int smp2p_probe_smem(struct qcom_smp2p *smp2p)
+{
+	struct device *dev = smp2p->dev;
+	u32 regs[2];
+	int ret;
+
+	smp2p->smem = of_get_qcom_smem(dev->of_node);
 	if (IS_ERR(smp2p->smem)) {
 		if (PTR_ERR(smp2p->smem) != -EPROBE_DEFER)
-			dev_err(&pdev->dev, "failed to acquire smem handle\n");
+			dev_err(dev, "failed to acquire smem handle\n");
 		return PTR_ERR(smp2p->smem);
 	}
 
-	smp2p->irq = platform_get_irq(pdev, 0);
-	if (smp2p->irq < 0) {
-		dev_err(&pdev->dev, "unable to acquire smp2p interrupt\n");
+	ret = of_property_read_u32_array(dev->of_node, "qcom,smem-ids", regs, 2);
+	if (ret < 0) {
+		dev_err(dev, "unable to parse qcom,smem-ids property\n");
 		return -EINVAL;
 	}
+	smp2p->smem_out_id = regs[0];
+	smp2p->smem_in_id = regs[1];
 
-	ret = devm_request_threaded_irq(&pdev->dev, smp2p->irq, NULL, qcom_smp2p_intr,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT, "smp2p", (void *)smp2p);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to request interrupt\n");
-		return -EINVAL;
-	}
+	return 0;
+}
 
+static int qcom_smp2p_probe(struct platform_device *pdev)
+{
+	struct smp2p_entry *entry;
+	struct device_node *node;
+	struct qcom_smp2p *smp2p;
+	const char *key;
+	int irq;
+	int ret;
+
+	smp2p = devm_kzalloc(&pdev->dev, sizeof(*smp2p), GFP_KERNEL);
+	if (!smp2p)
+		return -ENOMEM;
+
+	smp2p->dev = &pdev->dev;
+	mutex_init(&smp2p->lock);
 	INIT_LIST_HEAD(&smp2p->inbound);
 	INIT_LIST_HEAD(&smp2p->outbound);
 
+	ret = smp2p_probe_ipc(smp2p);
+	if (ret)
+		return ret;
+
+	ret = smp2p_probe_smem(smp2p);
+	if (ret)
+		return ret;
+
+	key = "qcom,local-pid";
+	ret = of_property_read_u32(pdev->dev.of_node, key, &smp2p->local_pid);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "failed to read %s\n", key);
+		return -EINVAL;
+	}
+
+	key = "qcom,remote-pid";
+	ret = of_property_read_u32(pdev->dev.of_node, key, &smp2p->remote_pid);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "failed to read %s\n", key);
+		return -EINVAL;
+	}
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_err(&pdev->dev, "unable to acquire smp2p interrupt\n");
+		return irq;
+	}
+
+	ret = devm_request_threaded_irq(&pdev->dev, irq,
+					NULL, qcom_smp2p_intr,
+					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+					"smp2p", (void *)smp2p);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to request interrupt\n");
+		return ret;
+	}
+
 	for_each_available_child_of_node(pdev->dev.of_node, node) {
 		entry = devm_kzalloc(&pdev->dev, sizeof(*entry), GFP_KERNEL);
-		if (!entry)
-			return -ENOMEM;
+		if (!entry) {
+			ret = -ENOMEM;
+			goto unwind_interfaces;
+		}
 
 		entry->smp2p = smp2p;
 
 		ret = of_property_read_string(node, "qcom,entry-name", &entry->name);
 		if (ret < 0)
-			return ret;
+			goto unwind_interfaces;
 
 		if (of_property_read_bool(node, "qcom,outbound")) {
 			ret = qcom_smp2p_outgoing_entry(smp2p, entry, node);
 			if (ret < 0)
-				return ret;
+				goto unwind_interfaces;
 
 			list_add(&entry->node, &smp2p->outbound);
 		} else if (of_property_read_bool(node, "qcom,inbound")) {
 			entry->domain = irq_domain_add_linear(node, 32, &smp2p_irq_ops, entry);
-			if (!entry->domain)
-				return -ENOMEM;
+			if (!entry->domain) {
+				ret = -ENOMEM;
+				goto unwind_interfaces;
+			}
 
 			list_add(&entry->node, &smp2p->inbound);
 		} else {
 			dev_err(&pdev->dev, "neither inbound nor outbound\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto unwind_interfaces;
 		}
 	}
 
 	ret = qcom_smp2p_alloc_outgoing(smp2p);
 	if (ret < 0)
-		return ret;
+		goto unwind_interfaces;
 
-	dev_err(smp2p->dev, "Qualcomm Shared Memory Point to Point initialized\n");
+	dev_info(smp2p->dev, "Qualcomm Shared Memory Point to Point initialized\n");
 
 	return 0;
+
+unwind_interfaces:
+	list_for_each_entry(entry, &smp2p->inbound, node)
+		irq_domain_remove(entry->domain);
+
+	list_for_each_entry(entry, &smp2p->outbound, node)
+		gpiochip_remove(&entry->chip);
+
+	return ret;
 }
 
 static const struct of_device_id qcom_smp2p_of_match[] = {
