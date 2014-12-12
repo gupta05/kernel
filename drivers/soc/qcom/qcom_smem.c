@@ -166,13 +166,14 @@ int qcom_smem_alloc(struct qcom_smem *smem, unsigned smem_id, size_t size)
 
 	entry->offset = header->free_offset;
 	entry->size = size;
+
+	/* Ensure 'allocated' is the last field to be updated */
+	wmb();
 	entry->allocated = 1;
 
 	header->free_offset += size;
 	header->available -= size;
 
-	/* Commit the changes before we release the spin lock */
-	wmb();
 out:
 	hwspin_unlock_irqrestore(smem->hwlock, &flags);
 	return ret;
