@@ -46,6 +46,8 @@
 #define CMUX_SHIFT_PHASE_SHIFT	24
 #define CMUX_SHIFT_PHASE_MASK	(7 << CMUX_SHIFT_PHASE_SHIFT)
 
+#define CORE_VENDOR_SPEC_CAPABILITIES0	0x11C
+
 struct sdhci_msm_host {
 	struct platform_device *pdev;
 	void __iomem *core_mem;	/* MSM SDCC mapped address */
@@ -461,6 +463,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	struct sdhci_pltfm_host *pltfm_host;
 	struct sdhci_msm_host *msm_host;
 	struct resource *core_memres;
+	u32 caps;
 	int ret;
 	u16 host_version;
 
@@ -543,6 +546,13 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	/* Set HC_MODE_EN bit in HC_MODE register */
 	writel_relaxed(HC_MODE_EN, (msm_host->core_mem + CORE_HC_MODE));
+
+	caps = readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES);
+	caps |= SDHCI_CAN_VDD_330;
+	caps |= SDHCI_CAN_VDD_300;
+	caps |= SDHCI_CAN_VDD_180;
+	caps &= ~SDHCI_CAN_64BIT;
+	writel_relaxed(caps, host->ioaddr + CORE_VENDOR_SPEC_CAPABILITIES0);
 
 	host->quirks |= SDHCI_QUIRK_BROKEN_CARD_DETECTION;
 	host->quirks |= SDHCI_QUIRK_SINGLE_POWER_WRITE;
