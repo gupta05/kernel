@@ -1225,9 +1225,6 @@ int mmc_regulator_get_ocrmask(struct regulator *supply)
 	int			vdd_mV;
 
 	count = regulator_count_voltages(supply);
-	if (count < 0)
-		return count;
-
 	for (i = 0; i < count; i++) {
 		vdd_uV = regulator_list_voltage(supply, i);
 		if (vdd_uV <= 0)
