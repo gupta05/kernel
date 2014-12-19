@@ -672,10 +672,12 @@ static int drms_uA_update(struct regulator_dev *rdev)
 	if (err < 0)
 		return 0;
 
-	if (!rdev->desc->ops->get_optimum_mode)
+	if (!rdev->desc->ops->get_optimum_mode &&
+	    !rdev->desc->ops->set_optimum_mode)
 		return 0;
 
-	if (!rdev->desc->ops->set_mode)
+	if (!rdev->desc->ops->set_mode &&
+	    !rdev->desc->ops->set_optimum_mode)
 		return -EINVAL;
 
 	/* get output voltage */
@@ -700,21 +702,31 @@ static int drms_uA_update(struct regulator_dev *rdev)
 	list_for_each_entry(sibling, &rdev->consumer_list, list)
 		current_uA += sibling->uA_load;
 
-	/* now get the optimum mode for our new total regulator load */
-	mode = rdev->desc->ops->get_optimum_mode(rdev, input_uV,
-						  output_uV, current_uA);
+	if (rdev->desc->ops->set_optimum_mode) {
+		/* set the optimum mode for our new total regulator load */
+		err = rdev->desc->ops->set_optimum_mode(rdev,
+							input_uV, output_uV,
+							current_uA);
+		if (err < 0)
+			rdev_err(rdev, "failed to set optimum mode @ %d uA %d -> %d uV\n",
+				 current_uA, input_uV, output_uV);
+	} else {
+		/* now get the optimum mode for our new total regulator load */
+		mode = rdev->desc->ops->get_optimum_mode(rdev, input_uV,
+							 output_uV, current_uA);
 
-	/* check the new mode is allowed */
-	err = regulator_mode_constrain(rdev, &mode);
-	if (err < 0) {
-		rdev_err(rdev, "failed to get optimum mode @ %d uA %d -> %d uV\n",
-			 current_uA, input_uV, output_uV);
-		return err;
+		/* check the new mode is allowed */
+		err = regulator_mode_constrain(rdev, &mode);
+		if (err < 0) {
+			rdev_err(rdev, "failed to get optimum mode @ %d uA %d -> %d uV\n",
+				 current_uA, input_uV, output_uV);
+			return err;
+		}
+
+		err = rdev->desc->ops->set_mode(rdev, mode);
+		if (err < 0)
+			rdev_err(rdev, "failed to set optimum mode %x\n", mode);
 	}
-
-	err = rdev->desc->ops->set_mode(rdev, mode);
-	if (err < 0)
-		rdev_err(rdev, "failed to set optimum mode %x\n", mode);
 
 	return err;
 }
