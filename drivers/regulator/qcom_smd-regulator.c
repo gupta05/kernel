@@ -40,7 +40,7 @@ struct rpm_regulator_req {
 
 #define RPM_KEY_SWEN	0x6e657773 /* "swen" */
 #define RPM_KEY_UV	0x00007675 /* "uv" */
-#define RPM_KEY_MV	0x0000616d /* "ma" */
+#define RPM_KEY_MA	0x0000616d /* "ma" */
 
 static int rpm_reg_enable(struct regulator_dev *rdev)
 {
@@ -110,6 +110,19 @@ static int rpm_reg_set_voltage(struct regulator_dev *rdev,
 	return ret;
 }
 
+static int rpm_reg_set_optimum_mode(struct regulator_dev *rdev, int input_uV,
+				    int output_uV, int load_uA)
+{
+	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
+	struct rpm_regulator_req req;
+
+	req.key = RPM_KEY_MA;
+	req.nbytes = sizeof(u32);
+	req.value = load_uA;
+
+	return qcom_rpm_smd_write(vreg->rpm, QCOM_SMD_RPM_ACTIVE_STATE, vreg->resource[0], vreg->resource[1], &req, sizeof(req));
+}
+
 static struct regulator_ops rpm_smps_ops = {
 	.enable = rpm_reg_enable,
 	.disable = rpm_reg_disable,
@@ -117,6 +130,8 @@ static struct regulator_ops rpm_smps_ops = {
 
 	.get_voltage = rpm_reg_get_voltage,
 	.set_voltage = rpm_reg_set_voltage,
+
+	.set_optimum_mode = rpm_reg_set_optimum_mode,
 };
 
 static struct regulator_ops rpm_ldo_ops = {
@@ -126,6 +141,8 @@ static struct regulator_ops rpm_ldo_ops = {
 
 	.get_voltage = rpm_reg_get_voltage,
 	.set_voltage = rpm_reg_set_voltage,
+
+	.set_optimum_mode = rpm_reg_set_optimum_mode,
 };
 
 static struct regulator_ops rpm_switch_ops = {
@@ -172,6 +189,8 @@ static int rpm_reg_probe(struct platform_device *pdev)
 	vreg->desc.type = REGULATOR_VOLTAGE;
 	vreg->desc.supply_name = "vin";
 
+	initdata->constraints.valid_ops_mask |= REGULATOR_CHANGE_DRMS;
+
 	vreg->rpm = dev_get_drvdata(pdev->dev.parent);
 	if (!vreg->rpm) {
 		dev_err(&pdev->dev, "unable to get rpm handle\n");
@@ -191,6 +210,9 @@ static int rpm_reg_probe(struct platform_device *pdev)
 	    (!initdata->constraints.min_uV || !initdata->constraints.max_uV)) {
 		dev_err(&pdev->dev, "no voltage specified for regulator\n");
 		return -EINVAL;
+	} else if (!vreg->desc.ops->set_voltage) {
+		vreg->desc.fixed_uV = initdata->constraints.min_uV;
+		vreg->desc.n_voltages = 1;
 	}
 
 	config.dev = &pdev->dev;
