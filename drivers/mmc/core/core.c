@@ -1307,7 +1307,9 @@ EXPORT_SYMBOL_GPL(mmc_regulator_set_ocr);
 
 int mmc_regulator_get_supply(struct mmc_host *mmc)
 {
+	struct device_node *np = mmc->parent->of_node;
 	struct device *dev = mmc_dev(mmc);
+	u32 val;
 	int ret;
 
 	mmc->supply.vmmc = devm_regulator_get_optional(dev, "vmmc");
@@ -1323,12 +1325,20 @@ int mmc_regulator_get_supply(struct mmc_host *mmc)
 			mmc->ocr_avail = ret;
 		else
 			dev_warn(dev, "Failed getting OCR mask: %d\n", ret);
+
+		ret = of_property_read_u32(np, "vmmc-load", &val);
+		if (!ret)
+			regulator_set_optimum_mode(mmc->supply.vmmc, val);
 	}
 
 	if (IS_ERR(mmc->supply.vqmmc)) {
 		if (PTR_ERR(mmc->supply.vqmmc) == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
 		dev_info(dev, "No vqmmc regulator found\n");
+	} else {
+		ret = of_property_read_u32(np, "vqmmc-load", &val);
+		if (!ret)
+			regulator_set_optimum_mode(mmc->supply.vqmmc, val);
 	}
 
 	return 0;
