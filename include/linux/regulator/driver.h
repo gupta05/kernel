@@ -166,6 +166,9 @@ struct regulator_ops {
 	/* get most efficient regulator operating mode for load */
 	unsigned int (*get_optimum_mode) (struct regulator_dev *, int input_uV,
 					  int output_uV, int load_uA);
+	/* set regulator current consumption */
+	int (*set_optimum_mode)(struct regulator_dev *, int input_uV,
+				int output_uV, int load_uA);
 
 	/* control and report on bypass mode */
 	int (*set_bypass)(struct regulator_dev *dev, bool enable);
