@@ -190,6 +190,7 @@ static int rpm_reg_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	initdata->constraints.valid_ops_mask |= REGULATOR_CHANGE_DRMS;
+	initdata->constraints.input_uV = initdata->constraints.max_uV;
 
 	vreg->rpm = dev_get_drvdata(pdev->dev.parent);
 	if (!vreg->rpm) {
