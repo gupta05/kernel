@@ -99,11 +99,11 @@ static int wm8400_dcdc_set_mode(struct regulator_dev *dev, unsigned int mode)
 	}
 }
 
-static unsigned int wm8400_dcdc_get_optimum_mode(struct regulator_dev *dev,
-						 int input_uV, int output_uV,
-						 int load_uA)
+static int wm8400_dcdc_set_optimum_mode(struct regulator_dev *dev,
+					int input_uV, int output_uV,
+					int load_uA)
 {
-	return REGULATOR_MODE_NORMAL;
+	return wm8400_dcdc_set_mode(rdev, REGULATOR_MODE_NORMAL);
 }
 
 static struct regulator_ops wm8400_dcdc_ops = {
@@ -116,7 +116,7 @@ static struct regulator_ops wm8400_dcdc_ops = {
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.get_mode = wm8400_dcdc_get_mode,
 	.set_mode = wm8400_dcdc_set_mode,
-	.get_optimum_mode = wm8400_dcdc_get_optimum_mode,
+	.set_optimum_mode = wm8400_dcdc_set_optimum_mode,
 };
 
 static struct regulator_desc regulators[] = {
