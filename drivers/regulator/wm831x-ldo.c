@@ -186,15 +186,20 @@ static int wm831x_gp_ldo_get_status(struct regulator_dev *rdev)
 		return regulator_mode_to_status(ret);
 }
 
-static unsigned int wm831x_gp_ldo_get_optimum_mode(struct regulator_dev *rdev,
-						   int input_uV,
-						   int output_uV, int load_uA)
+static int wm831x_gp_ldo_set_optimum_mode(struct regulator_dev *rdev,
+					  int input_uV,
+					  int output_uV, int load_uA)
 {
+	unsigned int mode;
+
 	if (load_uA < 20000)
-		return REGULATOR_MODE_STANDBY;
-	if (load_uA < 50000)
-		return REGULATOR_MODE_IDLE;
-	return REGULATOR_MODE_NORMAL;
+		mode = REGULATOR_MODE_STANDBY;
+	else if (load_uA < 50000)
+		mode = REGULATOR_MODE_IDLE;
+	else
+		mode = REGULATOR_MODE_NORMAL;
+
+	return wm831x_gp_ldo_set_mode(rdev, mode);
 }
 
 
@@ -207,7 +212,7 @@ static struct regulator_ops wm831x_gp_ldo_ops = {
 	.get_mode = wm831x_gp_ldo_get_mode,
 	.set_mode = wm831x_gp_ldo_set_mode,
 	.get_status = wm831x_gp_ldo_get_status,
-	.get_optimum_mode = wm831x_gp_ldo_get_optimum_mode,
+	.set_optimum_mode = wm831x_gp_ldo_set_optimum_mode,
 	.get_bypass = regulator_get_bypass_regmap,
 	.set_bypass = regulator_set_bypass_regmap,
 
