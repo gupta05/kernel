@@ -171,6 +171,11 @@ static const struct regulator_linear_range nldo1200_ranges[] = {
 	REGULATOR_LINEAR_RANGE( 750000,  60, 123, 12500),
 };
 
+static const struct regulator_linear_range ln_ldo_ranges[] = {
+	REGULATOR_LINEAR_RANGE( 690000, 0, 7,  60000),
+	REGULATOR_LINEAR_RANGE(1380000, 8, 15, 120000),
+};
+
 static const struct regulator_linear_range smps_ranges[] = {
 	REGULATOR_LINEAR_RANGE( 375000,   0,  29, 12500),
 	REGULATOR_LINEAR_RANGE( 750000,  30,  89, 12500),
@@ -205,6 +210,7 @@ static int rpm_reg_write(struct qcom_rpm_reg *vreg,
 	vreg->val[req->word] |= value << req->shift;
 
 	return qcom_rpm_write(vreg->rpm,
+			      RPM_ACTIVE_STATE,
 			      vreg->resource,
 			      vreg->val,
 			      vreg->parts->request_len);
@@ -533,6 +539,14 @@ static const struct qcom_rpm_reg pm8921_nldo1200 = {
 	.supports_force_mode_bypass = true,
 };
 
+static const struct qcom_rpm_reg pm8921_ln_ldo = {
+	.desc.linear_ranges = ln_ldo_ranges,
+	.desc.n_linear_ranges = ARRAY_SIZE(ln_ldo_ranges),
+	.desc.n_voltages = 16,
+	.desc.ops = &uV_ops,
+	.parts = &rpm8960_ldo_parts,
+};
+
 static const struct qcom_rpm_reg pm8921_smps = {
 	.desc.linear_ranges = smps_ranges,
 	.desc.n_linear_ranges = ARRAY_SIZE(smps_ranges),
@@ -591,6 +605,7 @@ static const struct of_device_id rpm_of_match[] = {
 	{ .compatible = "qcom,rpm-pm8921-pldo",     .data = &pm8921_pldo },
 	{ .compatible = "qcom,rpm-pm8921-nldo",     .data = &pm8921_nldo },
 	{ .compatible = "qcom,rpm-pm8921-nldo1200", .data = &pm8921_nldo1200 },
+	{ .compatible = "qcom,rpm-pm8921-ln_ldo",   .data = &pm8921_ln_ldo },
 	{ .compatible = "qcom,rpm-pm8921-smps",     .data = &pm8921_smps },
 	{ .compatible = "qcom,rpm-pm8921-ftsmps",   .data = &pm8921_ftsmps },
 	{ .compatible = "qcom,rpm-pm8921-ncp",      .data = &pm8921_ncp },
@@ -674,6 +689,7 @@ static int rpm_reg_probe(struct platform_device *pdev)
 	vreg->desc.owner = THIS_MODULE;
 	vreg->desc.type = REGULATOR_VOLTAGE;
 	vreg->desc.name = pdev->dev.of_node->name;
+	vreg->desc.supply_name = "vin";
 
 	vreg->rpm = dev_get_drvdata(pdev->dev.parent);
 	if (!vreg->rpm) {
