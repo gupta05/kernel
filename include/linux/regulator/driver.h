@@ -95,7 +95,7 @@ struct regulator_linear_range {
  * @get_mode: Get the configured operating mode for the regulator.
  * @get_status: Return actual (not as-configured) status of regulator, as a
  *	REGULATOR_STATUS value (or negative errno)
- * @get_optimum_mode: Get the most efficient operating mode for the regulator
+ * @set_optimum_mode: Set the most efficient operating mode for the regulator
  *                    when running with the specified parameters.
  *
  * @set_bypass: Set the regulator in bypass mode.
@@ -163,9 +163,9 @@ struct regulator_ops {
 	 */
 	int (*get_status)(struct regulator_dev *);
 
-	/* get most efficient regulator operating mode for load */
-	unsigned int (*get_optimum_mode) (struct regulator_dev *, int input_uV,
-					  int output_uV, int load_uA);
+	/* set most efficient regulator operating mode for load */
+	int (*set_optimum_mode)(struct regulator_dev *, int input_uV,
+				int output_uV, int load_uA);
 
 	/* control and report on bypass mode */
 	int (*set_bypass)(struct regulator_dev *dev, bool enable);

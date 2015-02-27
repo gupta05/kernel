@@ -477,15 +477,18 @@ static int hi6421_regulator_buck_set_mode(struct regulator_dev *rdev,
 	return 0;
 }
 
-unsigned int hi6421_regulator_ldo_get_optimum_mode(struct regulator_dev *rdev,
+static int hi6421_regulator_ldo_set_optimum_mode(struct regulator_dev *rdev,
 			int input_uV, int output_uV, int load_uA)
 {
 	struct hi6421_regulator_info *info = rdev_get_drvdata(rdev);
+	unsigned int mode;
 
 	if (load_uA > info->eco_microamp)
-		return REGULATOR_MODE_NORMAL;
+		mode = REGULATOR_MODE_NORMAL;
+	else
+		mode = REGULATOR_MODE_IDLE;
 
-	return REGULATOR_MODE_IDLE;
+	return hi6421_regulator_ldo_set_mode(rdev, mode);
 }
 
 static const struct regulator_ops hi6421_ldo_ops = {
@@ -498,7 +501,7 @@ static const struct regulator_ops hi6421_ldo_ops = {
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.get_mode = hi6421_regulator_ldo_get_mode,
 	.set_mode = hi6421_regulator_ldo_set_mode,
-	.get_optimum_mode = hi6421_regulator_ldo_get_optimum_mode,
+	.set_optimum_mode = hi6421_regulator_ldo_set_optimum_mode,
 };
 
 static const struct regulator_ops hi6421_ldo_linear_ops = {
@@ -511,7 +514,7 @@ static const struct regulator_ops hi6421_ldo_linear_ops = {
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.get_mode = hi6421_regulator_ldo_get_mode,
 	.set_mode = hi6421_regulator_ldo_set_mode,
-	.get_optimum_mode = hi6421_regulator_ldo_get_optimum_mode,
+	.set_optimum_mode = hi6421_regulator_ldo_set_optimum_mode,
 };
 
 static const struct regulator_ops hi6421_ldo_linear_range_ops = {
@@ -524,7 +527,7 @@ static const struct regulator_ops hi6421_ldo_linear_range_ops = {
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.get_mode = hi6421_regulator_ldo_get_mode,
 	.set_mode = hi6421_regulator_ldo_set_mode,
-	.get_optimum_mode = hi6421_regulator_ldo_get_optimum_mode,
+	.set_optimum_mode = hi6421_regulator_ldo_set_optimum_mode,
 };
 
 static const struct regulator_ops hi6421_buck012_ops = {

@@ -320,27 +320,6 @@ static int ab8500_regulator_is_enabled(struct regulator_dev *rdev)
 		return 0;
 }
 
-static unsigned int ab8500_regulator_get_optimum_mode(
-		struct regulator_dev *rdev, int input_uV,
-		int output_uV, int load_uA)
-{
-	unsigned int mode;
-
-	struct ab8500_regulator_info *info = rdev_get_drvdata(rdev);
-
-	if (info == NULL) {
-		dev_err(rdev_get_dev(rdev), "regulator info null pointer\n");
-		return -EINVAL;
-	}
-
-	if (load_uA <= info->load_lp_uA)
-		mode = REGULATOR_MODE_IDLE;
-	else
-		mode = REGULATOR_MODE_NORMAL;
-
-	return mode;
-}
-
 static int ab8500_regulator_set_mode(struct regulator_dev *rdev,
 				     unsigned int mode)
 {
@@ -428,6 +407,27 @@ out_unlock:
 		mutex_unlock(&shared_mode_mutex);
 
 	return ret;
+}
+
+static int ab8500_regulator_set_optimum_mode(
+		struct regulator_dev *rdev, int input_uV,
+		int output_uV, int load_uA)
+{
+	unsigned int mode;
+
+	struct ab8500_regulator_info *info = rdev_get_drvdata(rdev);
+
+	if (info == NULL) {
+		dev_err(rdev_get_dev(rdev), "regulator info null pointer\n");
+		return -EINVAL;
+	}
+
+	if (load_uA <= info->load_lp_uA)
+		mode = REGULATOR_MODE_IDLE;
+	else
+		mode = REGULATOR_MODE_NORMAL;
+
+	return ab8500_regulator_set_mode(rdev, mode);
 }
 
 static unsigned int ab8500_regulator_get_mode(struct regulator_dev *rdev)
@@ -645,7 +645,7 @@ static struct regulator_ops ab8500_regulator_volt_mode_ops = {
 	.enable			= ab8500_regulator_enable,
 	.disable		= ab8500_regulator_disable,
 	.is_enabled		= ab8500_regulator_is_enabled,
-	.get_optimum_mode	= ab8500_regulator_get_optimum_mode,
+	.set_optimum_mode	= ab8500_regulator_set_optimum_mode,
 	.set_mode		= ab8500_regulator_set_mode,
 	.get_mode		= ab8500_regulator_get_mode,
 	.get_voltage_sel 	= ab8500_regulator_get_voltage_sel,
@@ -656,7 +656,7 @@ static struct regulator_ops ab8500_regulator_volt_mode_ops = {
 static struct regulator_ops ab8540_aux3_regulator_volt_mode_ops = {
 	.enable		= ab8500_regulator_enable,
 	.disable	= ab8500_regulator_disable,
-	.get_optimum_mode	= ab8500_regulator_get_optimum_mode,
+	.set_optimum_mode	= ab8500_regulator_set_optimum_mode,
 	.set_mode	= ab8500_regulator_set_mode,
 	.get_mode	= ab8500_regulator_get_mode,
 	.is_enabled	= ab8500_regulator_is_enabled,
@@ -678,7 +678,7 @@ static struct regulator_ops ab8500_regulator_mode_ops = {
 	.enable			= ab8500_regulator_enable,
 	.disable		= ab8500_regulator_disable,
 	.is_enabled		= ab8500_regulator_is_enabled,
-	.get_optimum_mode	= ab8500_regulator_get_optimum_mode,
+	.set_optimum_mode	= ab8500_regulator_set_optimum_mode,
 	.set_mode		= ab8500_regulator_set_mode,
 	.get_mode		= ab8500_regulator_get_mode,
 	.list_voltage		= regulator_list_voltage_table,
