@@ -103,6 +103,7 @@ static const struct {
  * @ipc_bit:		bit in the register at @ipc_offset of @ipc_regmap
  * @channels:		list of all channels detected on this edge
  * @channels_lock:	guard for modifications of @channels
+ * @allocated:		array of bitmaps representing already allocated channels
  * @need_rescan:	flag that the @work needs to scan smem for new channels
  * @smem_available:	last available amount of smem triggering a channel scan
  * @work:		work item for edge house keeping
@@ -120,6 +121,8 @@ struct qcom_smd_edge {
 
 	struct list_head channels;
 	spinlock_t channels_lock;
+
+	DECLARE_BITMAP(allocated[SMD_ALLOC_TBL_COUNT], SMD_ALLOC_TBL_SIZE);
 
 	bool need_rescan;
 	unsigned smem_available;
@@ -197,18 +200,11 @@ struct qcom_smd_channel {
 /**
  * struct qcom_smd - smd struct
  * @dev:	device struct
- * @allocated:	bitmap representing already allocated channels
- * @alloc_tbl:	pointer(s) to the allocation table(s)
- * @alloc_tbl_entries: number of actual allocation entries found
  * @num_edges:	number of entries in @edges
  * @edges:	array of edges to be handled
  */
 struct qcom_smd {
 	struct device *dev;
-
-	DECLARE_BITMAP(allocated, SMD_ALLOC_TBL_COUNT * SMD_ALLOC_TBL_SIZE);
-	struct qcom_smd_alloc_entry *alloc_tbl[SMD_ALLOC_TBL_COUNT];
-	unsigned alloc_tbl_entries;
 
 	unsigned num_edges;
 	struct qcom_smd_edge edges[0];
@@ -1034,47 +1030,56 @@ free_name_and_channel:
  */
 static void qcom_discover_channels(struct qcom_smd_edge *edge)
 {
+	struct qcom_smd_alloc_entry *alloc_tbl;
 	struct qcom_smd_alloc_entry *entry;
 	struct qcom_smd_channel *channel;
 	struct qcom_smd *smd = edge->smd;
 	unsigned long flags;
 	unsigned fifo_id;
 	unsigned info_id;
+	int ret;
 	int tbl;
 	int i;
 
-	for (i = 0; i < smd->alloc_tbl_entries; i++) {
-		tbl = i / SMD_ALLOC_TBL_SIZE;
-
-		entry = &smd->alloc_tbl[tbl][i];
-		if (test_bit(i, smd->allocated))
+	for (tbl = 0; tbl < SMD_ALLOC_TBL_COUNT; tbl++) {
+		ret = qcom_smem_get(edge->edge_id,
+				    smem_items[i].alloc_tbl_id,
+				    (void **)&alloc_tbl,
+				    NULL);
+		if (ret < 0)
 			continue;
 
-		if (entry->ref_count == 0)
-			continue;
+		for (i = 0; i < SMD_ALLOC_TBL_SIZE; i++) {
+			entry = &alloc_tbl[i];
+			if (test_bit(i, edge->allocated[tbl]))
+				continue;
 
-		if (!entry->name[0])
-			continue;
+			if (entry->ref_count == 0)
+				continue;
 
-		if (!(entry->flags & SMD_CHANNEL_FLAGS_PACKET))
-			continue;
+			if (!entry->name[0])
+				continue;
 
-		if ((entry->flags & SMD_CHANNEL_FLAGS_EDGE_MASK) != edge->edge_id)
-			continue;
+			if (!(entry->flags & SMD_CHANNEL_FLAGS_PACKET))
+				continue;
 
-		info_id = smem_items[tbl].info_base_id + entry->cid;
-		fifo_id = smem_items[tbl].fifo_base_id + entry->cid;
+			if ((entry->flags & SMD_CHANNEL_FLAGS_EDGE_MASK) != edge->edge_id)
+				continue;
 
-		channel = qcom_smd_create_channel(edge, info_id, fifo_id, entry->name);
-		if (IS_ERR(channel))
-			continue;
+			info_id = smem_items[tbl].info_base_id + entry->cid;
+			fifo_id = smem_items[tbl].fifo_base_id + entry->cid;
 
-		spin_lock_irqsave(&edge->channels_lock, flags);
-		list_add(&channel->list, &edge->channels);
-		spin_unlock_irqrestore(&edge->channels_lock, flags);
+			channel = qcom_smd_create_channel(edge, info_id, fifo_id, entry->name);
+			if (IS_ERR(channel))
+				continue;
 
-		dev_dbg(smd->dev, "new channel found: '%s'\n", channel->name);
-		set_bit(i, smd->allocated);
+			spin_lock_irqsave(&edge->channels_lock, flags);
+			list_add(&channel->list, &edge->channels);
+			spin_unlock_irqrestore(&edge->channels_lock, flags);
+
+			dev_dbg(smd->dev, "new channel found: '%s'\n", channel->name);
+			set_bit(i, edge->allocated[tbl]);
+		}
 	}
 
 	schedule_work(&edge->work);
@@ -1222,20 +1227,6 @@ static int qcom_smd_probe(struct platform_device *pdev)
 	if (!smd)
 		return -ENOMEM;
 	smd->dev = &pdev->dev;
-
-	ret = qcom_smem_get(QCOM_SMEM_HOST_ANY, smem_items[0].alloc_tbl_id,
-			    (void **)&smd->alloc_tbl[0], NULL);
-	if (ret < 0) {
-		dev_err(smd->dev, "primary allocation table not available\n");
-		return ret;
-	};
-
-	smd->alloc_tbl_entries = SMD_ALLOC_TBL_SIZE;
-
-	ret = qcom_smem_get(QCOM_SMEM_HOST_ANY, smem_items[1].alloc_tbl_id,
-			    (void **)&smd->alloc_tbl[1], NULL);
-	if (ret >= 0)
-		smd->alloc_tbl_entries += SMD_ALLOC_TBL_SIZE;
 
 	smd->num_edges = num_edges;
 	for_each_available_child_of_node(pdev->dev.of_node, node) {
