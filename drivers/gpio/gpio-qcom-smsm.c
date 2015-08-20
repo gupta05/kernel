@@ -50,6 +50,7 @@
 #define SMSM_DEFAULT_NUM_HOSTS		3
 
 struct qcom_smsm_entry;
+struct smsm_host;
 
 /**
  * @kick_mask:	reference to the kick mask SMEM item
@@ -57,15 +58,13 @@ struct qcom_smsm_entry;
 struct qcom_smsm {
 	struct device *dev;
 
-	void *mem;
-	size_t size;
-
 	u32 local_host;
 
 	u32 num_hosts;
 	u32 num_entries;
 
 	struct qcom_smsm_entry *entries;
+	struct smsm_host *hosts;
 };
 
 /**
@@ -83,13 +82,24 @@ struct qcom_smsm_entry {
 
 	struct gpio_chip chip;
 	bool chip_added;
-	struct regmap *ipc_regmap;
-	int ipc_bit;
-	int ipc_offset;
 
 	u32 *mem;
 	u32 *kick_mask;
 };
+
+struct smsm_host {
+	struct regmap *ipc_regmap;
+	int ipc_bit;
+	int ipc_offset;
+};
+
+static void smsm_kick(struct smsm_host *host)
+{
+	if (!host->ipc_regmap)
+		return;
+
+	regmap_write(host->ipc_regmap, host->ipc_offset, BIT(host->ipc_bit));
+}
 
 static int smsm_gpio_output(struct gpio_chip *chip, unsigned offset, int value)
 {
@@ -106,17 +116,11 @@ static int smsm_gpio_output(struct gpio_chip *chip, unsigned offset, int value)
 		val &= ~BIT(offset);
 	writel(val, entry->mem);
 
-	if (entry->kick_mask) {
-		/* Iterate over all hosts to check whom wants a kick */
-		for (host = 0; host < smsm->num_hosts; host++) {
-			val = readl(entry->kick_mask + host);
-
-			if (val & BIT(offset)) {
-				regmap_write(entry->ipc_regmap,
-					     entry->ipc_offset,
-					     BIT(entry->ipc_bit));
-			}
-		}
+	/* Iterate over all hosts to check whom wants a kick */
+	for (host = 0; host < smsm->num_hosts; host++) {
+		val = readl(entry->kick_mask + host);
+		if (val & BIT(offset))
+			smsm_kick(&smsm->hosts[host]);
 	}
 
 	return 0;
@@ -127,32 +131,32 @@ static void smsm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 	smsm_gpio_output(chip, offset, value);
 }
 
-static int smsm_parse_ipc(struct device *dev,
-			  struct qcom_smsm_entry *entry,
-			  struct device_node *node)
+static int smsm_parse_ipc(struct qcom_smsm *smsm, unsigned host_id)
 {
 	struct device_node *syscon;
-	const char *key;
+	struct device_node *node = smsm->dev->of_node;
+	struct smsm_host *host = &smsm->hosts[host_id];
+	char key[16];
 	int ret;
 
-	syscon = of_parse_phandle(node, "qcom,ipc", 0);
+	snprintf(key, sizeof(key), "qcom,ipc-%d", host_id);
+	syscon = of_parse_phandle(node, key, 0);
 	if (!syscon)
 		return 0;
 
-	entry->ipc_regmap = syscon_node_to_regmap(syscon);
-	if (IS_ERR(entry->ipc_regmap))
-		return PTR_ERR(entry->ipc_regmap);
+	host->ipc_regmap = syscon_node_to_regmap(syscon);
+	if (IS_ERR(host->ipc_regmap))
+		return PTR_ERR(host->ipc_regmap);
 
-	key = "qcom,ipc";
-	ret = of_property_read_u32_index(node, key, 1, &entry->ipc_offset);
+	ret = of_property_read_u32_index(node, key, 1, &host->ipc_offset);
 	if (ret < 0) {
-		dev_err(dev, "no offset in %s\n", key);
+		dev_err(smsm->dev, "no offset in %s\n", key);
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32_index(node, key, 2, &entry->ipc_bit);
+	ret = of_property_read_u32_index(node, key, 2, &host->ipc_bit);
 	if (ret < 0) {
-		dev_err(dev, "no bit in %s\n", key);
+		dev_err(smsm->dev, "no bit in %s\n", key);
 		return -EINVAL;
 	}
 
@@ -365,10 +369,11 @@ static int qcom_smsm_probe(struct platform_device *pdev)
 	struct qcom_smsm_entry *entry;
 	struct device_node *node;
 	struct qcom_smsm *smsm;
-	void *intr_mask;
+	u32 *intr_mask;
 	size_t size;
 	size_t k;
-	u32 sid;
+	u32 *states;
+	u32 id;
 	int ret;
 
 	smsm = devm_kzalloc(&pdev->dev, sizeof(*smsm), GFP_KERNEL);
@@ -387,10 +392,25 @@ static int qcom_smsm_probe(struct platform_device *pdev)
 	if (!smsm->entries)
 		return -ENOMEM;
 
+	smsm->hosts = devm_kcalloc(&pdev->dev,
+				   smsm->num_hosts,
+				   sizeof(struct smsm_host),
+				   GFP_KERNEL);
+	if (!smsm->hosts)
+		return -ENOMEM;
+
 	of_property_read_u32(pdev->dev.of_node,
 			     "qcom,local-host",
 			     &smsm->local_host);
 
+	/* Parse the host properties */
+	for (k = 0; k < smsm->num_hosts; k++) {
+		ret = smsm_parse_ipc(smsm, k);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Acquire the main SMSM state vector */
 	ret = qcom_smem_alloc(QCOM_SMEM_HOST_ANY, SMEM_SMSM_SHARED_STATE,
 			      smsm->num_entries * sizeof(u32));
 	if (ret < 0 && ret != -EEXIST) {
@@ -399,47 +419,52 @@ static int qcom_smsm_probe(struct platform_device *pdev)
 	}
 
 	ret = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_SMSM_SHARED_STATE,
-			    (void **)&smsm->mem,
-			    &smsm->size);
+			    (void **)&states, NULL);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Unable to acquire shared state entry\n");
 		return ret;
 	}
 
+	/* Acquire the list of interrupt mask vectors */
 	size = smsm->num_entries * smsm->num_hosts * sizeof(u32);
 	ret = qcom_smem_alloc(QCOM_SMEM_HOST_ANY, SMEM_SMSM_CPU_INTR_MASK, size);
 	if (ret < 0 && ret != -EEXIST) {
 		dev_err(&pdev->dev, "unable to allocate smsm interrupt mask\n");
-		return -ret;
+		return ret;
 	}
 
 	ret = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_SMSM_CPU_INTR_MASK,
-			    &intr_mask, &size);
-	if (!ret) {
-		/* Setup kick_mask pointers and unsubscribe to any kicks */
-		for (k = 0; k < smsm->num_entries; k++) {
-			smsm->entries[k].kick_mask = intr_mask + k * smsm->num_hosts;
-			writel(0, smsm->entries[k].kick_mask + smsm->local_host);
-		}
+			    (void **)&intr_mask, NULL);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "unable to acquire shared memory interrupt mask\n");
+		return ret;
 	}
 
+	/* Setup kick_mask pointers and unsubscribe to any kicks */
+	for (k = 0; k < smsm->num_entries; k++) {
+		smsm->entries[k].kick_mask = intr_mask + k * smsm->num_hosts;
+		writel(0, smsm->entries[k].kick_mask + smsm->local_host);
+
+		smsm->entries[k].mem = states + k;
+	}
+
+	/* Register handlers for incoming and outgoing entries of interest. */
 	for_each_available_child_of_node(pdev->dev.of_node, node) {
-		ret = of_property_read_u32(node, "reg", &sid);
-		if (ret || sid >= smsm->num_entries) {
+		ret = of_property_read_u32(node, "reg", &id);
+		if (ret || id >= smsm->num_entries) {
 			dev_err(&pdev->dev, "invalid reg of entry\n");
 			return -EINVAL;
 		}
-		entry = &smsm->entries[sid];
-
-		ret = smsm_parse_ipc(&pdev->dev, entry, node);
-		if (ret < 0)
-			goto unwind_interfaces;
+		entry = &smsm->entries[id];
 
 		if (of_property_read_bool(node, "interrupt-controller")) {
-			smsm_inbound_entry(smsm, entry, node);
+			ret = smsm_inbound_entry(smsm, entry, node);
 		} else if (of_property_read_bool(node, "gpio-controller")) {
-			smsm_outbound_entry(smsm, entry, node);
+			ret = smsm_outbound_entry(smsm, entry, node);
 		}
+
+		if (ret < 0)
+			goto unwind_interfaces;
 	}
 
 	platform_set_drvdata(pdev, smsm);
@@ -447,11 +472,11 @@ static int qcom_smsm_probe(struct platform_device *pdev)
 	return 0;
 
 unwind_interfaces:
-	for (sid = 0; sid < smsm->num_entries; sid++) {
-		if (smsm->entries[sid].domain)
-			irq_domain_remove(smsm->entries[sid].domain);
-		else if (smsm->entries[sid].chip_added)
-			gpiochip_remove(&smsm->entries[sid].chip);
+	for (id = 0; id < smsm->num_entries; id++) {
+		if (smsm->entries[id].domain)
+			irq_domain_remove(smsm->entries[id].domain);
+		else if (smsm->entries[id].chip_added)
+			gpiochip_remove(&smsm->entries[id].chip);
 	}
 
 	return ret;
@@ -460,13 +485,13 @@ unwind_interfaces:
 static int qcom_smsm_remove(struct platform_device *pdev)
 {
 	struct qcom_smsm *smsm = platform_get_drvdata(pdev);
-	unsigned sid;
+	unsigned id;
 
-	for (sid = 0; sid < smsm->num_entries; sid++) {
-		if (smsm->entries[sid].domain)
-			irq_domain_remove(smsm->entries[sid].domain);
-		else if (smsm->entries[sid].chip_added)
-			gpiochip_remove(&smsm->entries[sid].chip);
+	for (id = 0; id < smsm->num_entries; id++) {
+		if (smsm->entries[id].domain)
+			irq_domain_remove(smsm->entries[id].domain);
+		else if (smsm->entries[id].chip_added)
+			gpiochip_remove(&smsm->entries[id].chip);
 	}
 
 	return 0;
@@ -489,4 +514,4 @@ static struct platform_driver qcom_smsm_driver = {
 module_platform_driver(qcom_smsm_driver);
 
 MODULE_DESCRIPTION("Qualcomm Shared Memory State Machine driver");
-MODULE_LICENSE("GPLv2");
+MODULE_LICENSE("GPL v2");
