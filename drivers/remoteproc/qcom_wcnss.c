@@ -19,9 +19,9 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/interrupt.h>
-#include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/io.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
@@ -148,8 +148,32 @@ void qcom_wcnss_assign_iris(struct qcom_wcnss *wcnss,
 static int wcnss_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct qcom_wcnss *wcnss = (struct qcom_wcnss *)rproc->priv;
+	phys_addr_t fw_addr;
+	size_t fw_size;
+	bool relocate;
+	int ret;
 
-	return qcom_mdt_load(rproc, WCNSS_PAS_ID, fw, wcnss->mem_phys,
+	ret = qcom_scm_pas_init_image(WCNSS_PAS_ID, fw->data, fw->size);
+	if (ret) {
+		dev_err(&rproc->dev, "invalid firmware metadata\n");
+		return -EINVAL;
+	}
+
+	ret = qcom_mdt_parse(fw, &fw_addr, &fw_size, &relocate);
+	if (ret) {
+		dev_err(&rproc->dev, "failed to parse mdt header\n");
+		return ret;
+	}
+
+	if (relocate) {
+		ret = qcom_scm_pas_mem_setup(WCNSS_PAS_ID, wcnss->mem_phys, fw_size);
+		if (ret) {
+			dev_err(&rproc->dev, "unable to setup memory for image\n");
+			return -EINVAL;
+		}
+	}
+
+	return qcom_mdt_load(rproc, fw, rproc->firmware, fw_addr,
 			     wcnss->mem_region, wcnss->mem_size);
 }
 
@@ -485,7 +509,7 @@ static int wcnss_probe(struct platform_device *pdev)
 
 	mutex_init(&wcnss->iris_lock);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmu");
 	mmio = devm_ioremap_resource(&pdev->dev, res);
 	if (!mmio) {
 		ret = -ENOMEM;
@@ -556,6 +580,7 @@ static int wcnss_remove(struct platform_device *pdev)
 	of_platform_depopulate(&pdev->dev);
 
 	qcom_smem_state_put(wcnss->state);
+	rproc_del(wcnss->rproc);
 	rproc_put(wcnss->rproc);
 
 	return 0;
