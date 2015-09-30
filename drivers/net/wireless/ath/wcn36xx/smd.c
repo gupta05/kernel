@@ -303,6 +303,24 @@ static int wcn36xx_smd_rsp_status_check(void *buf, size_t len)
 	return 0;
 }
 
+static int wcn36xx_smd_rsp_status_check_bav2(struct wcn36xx *wcn,
+		void *buf, size_t len)
+{
+	struct wcn36xx_fw_msg_status_rspv2 *rsp;
+
+	if (len < sizeof(struct wcn36xx_hal_msg_header) + sizeof(*rsp))
+		return wcn36xx_smd_rsp_status_check(buf, len);
+
+	rsp = buf + sizeof(struct wcn36xx_hal_msg_header);
+
+	if (WCN36XX_FW_MSG_RESULT_SUCCESS != rsp->status) {
+		pr_err("%s: bad status, len = %d\n", __func__, len);
+		return rsp->status;
+	}
+
+	return 0;
+}
+
 static int wcn36xx_smd_start_rsp(struct wcn36xx *wcn, void *buf, size_t len)
 {
 	struct wcn36xx_hal_mac_start_rsp_msg *rsp;
@@ -1884,7 +1902,7 @@ int wcn36xx_smd_trigger_ba(struct wcn36xx *wcn, u8 sta_index)
 		wcn36xx_err("Sending hal_trigger_ba failed\n");
 		goto out;
 	}
-	ret = wcn36xx_smd_rsp_status_check(wcn->hal_buf, wcn->hal_rsp_len);
+	ret = wcn36xx_smd_rsp_status_check_bav2(wcn, wcn->hal_buf, wcn->hal_rsp_len);
 	if (ret) {
 		wcn36xx_err("hal_trigger_ba response failed err=%d\n", ret);
 		goto out;

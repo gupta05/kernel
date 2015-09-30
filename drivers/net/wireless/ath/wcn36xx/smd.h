@@ -44,6 +44,20 @@ struct wcn36xx_fw_msg_status_rsp {
 	u32	status;
 } __packed;
 
+struct wcn36xx_fw_msg_status_rspv2 {
+
+	/* TO SUPPORT BT-AMP */
+	u8      bss_id[6];
+
+	/* success or failure */
+	u32     status __attribute__ ((packed));
+
+	/* baCandidateCnt is followed by trigger BA
+	 * Rsp Candidate List(tTriggerRspBaCandidate)
+	 */
+	u16     count_following_candidates __attribute__ ((packed));
+};
+
 struct wcn36xx_hal_ind_msg {
 	struct list_head list;
 	size_t msg_len;
