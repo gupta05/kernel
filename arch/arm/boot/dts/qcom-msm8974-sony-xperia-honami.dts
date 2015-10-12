@@ -222,11 +222,7 @@
 				};
 			};
 		};
-	};
-};
 
-&spmi_bus {
-	pm8941@0 {
 		coincell@2800 {
 			status = "ok";
 			qcom,rset-ohms = <2100>;
