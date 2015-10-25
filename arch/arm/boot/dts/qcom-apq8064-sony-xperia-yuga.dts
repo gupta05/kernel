@@ -396,6 +396,14 @@
 						qcom,drive-strength = <PMIC_GPIO_STRENGTH_NO>;
 						qcom,pull-up-strength = <0>;
 					};
+
+					lm3533_pin_a: lm3533 {
+						pins = "gpio26";
+						function = "normal";
+
+						bias-disable;
+						power-source = <PM8921_GPIO_S4>;
+					};
 				};
 			};
 		};
@@ -410,6 +418,55 @@
 
 				pinctrl-names = "default";
 				pinctrl-0 = <&gsbi1_i2c_pin_a>;
+
+				lm3533@36 {
+					compatible = "ti,lm3533";
+					reg = <0x36>;
+
+					hwen-gpios = <&pm8921_gpio 26 GPIO_ACTIVE_HIGH>;
+					als-supply = <&pm8921_l11>;
+
+					ti,boost-freq-hz = <500000>;
+					ti,boost-ovp-mv = <24000>;
+
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					pinctrl-names = "default";
+					pinctrl-0 = <&lm3533_pin_a>;
+
+					als {
+						ti,als-resistance-ohm = <200000>;
+					};
+
+					backlight@0 {
+						reg = <0>;
+						label = "backlight";
+
+						led-max-microamp = <202000>;
+					};
+
+					led@0 {
+						reg = <0>;
+						label = "red";
+
+						led-max-microamp = <5000>;
+					};
+
+					led@1 {
+						reg = <1>;
+						label = "green";
+
+						led-max-microamp = <5000>;
+					};
+
+					led@2 {
+						reg = <2>;
+						label = "blue";
+
+						led-max-microamp = <5000>;
+					};
+				};
 			};
 		};
 
