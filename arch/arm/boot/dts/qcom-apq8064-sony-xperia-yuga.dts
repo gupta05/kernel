@@ -117,8 +117,20 @@
 				drive-strength = <2>;
 				bias-disable;
 			};
-		};
 
+			gsbi1_i2c_pin_a: gsbi1-i2c {
+				mux {
+					pins = "gpio20", "gpio21";
+					function = "gsbi1";
+				};
+
+				config {
+					bias-disable;
+					drive-strength = <4>;
+					input-enable;
+				};
+			};
+		};
 
 		rpm@108000 {
 			regulators {
@@ -387,6 +399,20 @@
 				};
 			};
 		};
+
+		gsbi@12440000 {
+			status = "okay";
+			qcom,mode = <GSBI_PROT_I2C>;
+
+			i2c@12460000 {
+				status = "okay";
+				clock-frequency = <355000>;
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&gsbi1_i2c_pin_a>;
+			};
+		};
+
 
 		phy@12500000 {
 			status		= "okay";
