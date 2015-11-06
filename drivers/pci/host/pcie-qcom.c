@@ -544,8 +544,7 @@ qcom_pcie_rd_own_conf(struct pcie_port *pp, int where, int size, u32 *val)
 		return PCIBIOS_SUCCESSFUL;
 	}
 
-	return dw_pcie_cfg_read(pp->dbi_base + (where & ~0x3), where,
-				size, val);
+	return dw_pcie_cfg_read(pp->dbi_base + where, size, val);
 }
 
 static struct pcie_host_ops qcom_pcie_ops = {
@@ -579,7 +578,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 
 	pcie->version = (unsigned int)match->data;
 
-	pcie->reset = devm_gpiod_get_optional(dev, "perst");
+	pcie->reset = devm_gpiod_get_optional(dev, "perst", GPIOD_OUT_LOW);
 	if (IS_ERR(pcie->reset) && PTR_ERR(pcie->reset) == -EPROBE_DEFER)
 		return PTR_ERR(pcie->reset);
 
