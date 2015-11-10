@@ -467,5 +467,3 @@
 		};
 	};
 };
-
-#include "qcom-msm8974-mdss.dtsi"
