@@ -22,6 +22,7 @@
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/debugfs.h>
+#include <linux/regulator/consumer.h>
 
 #define NAME_BUFFER_SIZE 256
 
@@ -448,6 +449,8 @@ struct rmi_driver_data {
 	struct list_head function_list;
 
 	struct rmi_device *rmi_dev;
+
+	struct regulator_bulk_data supplies[2];
 
 	struct rmi_function *f01_container;
 	bool f01_bootloader_mode;

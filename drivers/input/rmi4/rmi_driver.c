@@ -887,6 +887,8 @@ static int rmi_driver_suspend(struct device *dev)
 	if (data->post_suspend)
 		retval = data->post_suspend(data->pm_data);
 
+	regulator_bulk_disable(ARRAY_SIZE(data->supplies), data->supplies);
+
 exit:
 	mutex_unlock(&data->suspend_mutex);
 	return retval;
@@ -900,6 +902,11 @@ static int rmi_driver_resume(struct device *dev)
 
 	data = dev_get_drvdata(&rmi_dev->dev);
 	mutex_lock(&data->suspend_mutex);
+
+	retval = regulator_bulk_enable(ARRAY_SIZE(data->supplies),
+				       data->supplies);
+	if (retval)
+		goto exit;
 
 	if (data->pre_resume) {
 		retval = data->pre_resume(data->pm_data);
@@ -934,6 +941,7 @@ static int rmi_driver_remove(struct device *dev)
 	struct rmi_driver_data *data = dev_get_drvdata(&rmi_dev->dev);
 
 	disable_sensor(rmi_dev);
+	regulator_bulk_disable(ARRAY_SIZE(data->supplies), data->supplies);
 	rmi_free_function_list(rmi_dev);
 
 	kfree(data->irq_status);
@@ -1010,6 +1018,21 @@ static int rmi_driver_probe(struct device *dev)
 	INIT_LIST_HEAD(&data->function_list);
 	data->rmi_dev = rmi_dev;
 	dev_set_drvdata(&rmi_dev->dev, data);
+
+	data->supplies[0].supply = "vdd";
+	data->supplies[0].optional = true;
+	data->supplies[1].supply = "vio";
+	data->supplies[1].optional = true;
+	retval = devm_regulator_bulk_get(rmi_dev->xport->dev,
+					 ARRAY_SIZE(data->supplies),
+					 data->supplies);
+	if (retval < 0)
+		return retval;
+
+	retval = regulator_bulk_enable(ARRAY_SIZE(data->supplies),
+				       data->supplies);
+	if (retval < 0)
+		return retval;
 
 	/*
 	 * Right before a warm boot, the sensor might be in some unusual state,
