@@ -500,6 +500,60 @@ int __qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt, u32 *resp)
 		req, req_cnt * sizeof(*req), resp, sizeof(*resp));
 }
 
+int __qcom_scm_restore_sec_config(u32 sec_id, u32 ctx_bank_num)
+{
+	int ret, scm_ret = 0;
+	struct msm_scm_sec_cfg {
+		__le32 id;
+		__le32 ctx_bank_num;
+	} cfg;
+
+	cfg.id = cpu_to_le32(sec_id);
+	cfg.ctx_bank_num = cpu_to_le32(sec_id);
+
+	ret = qcom_scm_call(QCOM_SCM_MP_SVC, QCOM_SCM_MP_RESTORE_SEC_CFG,
+			&cfg, sizeof(cfg), &scm_ret, sizeof(scm_ret));
+
+	if (ret || scm_ret)
+		return ret ? ret : -EINVAL;
+
+	return 0;
+}
+
+int __qcom_scm_ocmem_lock(u32 id, u32 offset, u32 size, u32 mode)
+{
+	struct ocmem_tz_lock {
+		__le32 id;
+		__le32 offset;
+		__le32 size;
+		__le32 mode;
+	} request;
+
+	request.id     = cpu_to_le32(id);
+	request.offset = cpu_to_le32(offset);
+	request.size   = cpu_to_le32(size);
+	request.mode   = cpu_to_le32(mode);
+
+	return qcom_scm_call(QCOM_SCM_OCMEM_SVC, QCOM_SCM_OCMEM_LOCK_CMD,
+			&request, sizeof(request), NULL, 0);
+}
+
+int __qcom_scm_ocmem_unlock(u32 id, u32 offset, u32 size)
+{
+	struct ocmem_tz_unlock {
+		__le32 id;
+		__le32 offset;
+		__le32 size;
+	} request;
+
+	request.id     = cpu_to_le32(id);
+	request.offset = cpu_to_le32(offset);
+	request.size   = cpu_to_le32(size);
+
+	return qcom_scm_call(QCOM_SCM_OCMEM_SVC, QCOM_SCM_OCMEM_UNLOCK_CMD,
+			&request, sizeof(request), NULL, 0);
+}
+
 bool __qcom_scm_pas_supported(u32 peripheral)
 {
 	__le32 out;

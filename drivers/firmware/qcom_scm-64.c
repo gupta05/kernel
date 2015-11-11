@@ -62,6 +62,22 @@ int __qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt, u32 *resp)
 	return -ENOTSUPP;
 }
 
+int __qcom_scm_restore_sec_config(u32 sec_id, u32 ctx_bank_num)
+{
+	return -ENOTSUPP;
+}
+
+int __qcom_scm_ocmem_lock(uint32_t id, uint32_t offset, uint32_t size,
+		uint32_t mode)
+{
+	return -ENOTSUPP;
+}
+
+int __qcom_scm_ocmem_unlock(uint32_t id, uint32_t offset, uint32_t size)
+{
+	return -ENOTSUPP;
+}
+
 bool __qcom_scm_pas_supported(u32 peripheral)
 {
 	return false;
