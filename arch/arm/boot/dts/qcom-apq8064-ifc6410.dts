@@ -279,5 +279,9 @@
 				mmc-pwrseq = <&sdcc4_pwrseq>;
 			};
 		};
+
+		pci@1b500000 {
+			status = "ok";
+		};
 	};
 };
