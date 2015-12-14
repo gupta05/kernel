@@ -543,6 +543,36 @@
 	smd {
 		compatible = "qcom,smd";
 
+		pronto {
+			status = "disabled";
+			interrupts = <0 142 IRQ_TYPE_EDGE_RISING>;
+
+			qcom,ipc = <&apcs 8 17>;
+			qcom,smd-edge = <6>;
+
+			wcnss {
+				compatible = "qcom,wcnss";
+				qcom,smd-channels = "WCNSS_CTRL";
+				status = "disabled";
+
+				qcom,mmio = <&pronto>;
+
+				bt {
+					compatible = "qcom,wcnss-bt";
+				};
+
+				wifi {
+					compatible = "qcom,wcnss-wlan";
+
+					interrupts = <0 145 0>, <0 146 0>;
+					interrupt-names = "tx", "rx";
+
+					qcom,state = <&apps_smsm 10>, <&apps_smsm 9>;
+					qcom,state-names = "tx-enable", "tx-rings-empty";
+				};
+			};
+		};
+
 		rpm {
 			interrupts = <0 168 1>;
 			qcom,ipc = <&apcs 8 0>;
