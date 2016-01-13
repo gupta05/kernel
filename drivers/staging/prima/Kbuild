@@ -45,35 +45,35 @@ ifeq ($(KERNEL_BUILD), 0)
 
 endif
 
-CONFIG_PRONTO_WLAN := m
+CONFIG_PRONTO_WLAN ?= m
 # To enable CONFIG_QCOM_ESE_UPLOAD, dependent config
 # CONFIG_QCOM_ESE must be enabled.
-CONFIG_PRIMA_WLAN_BTAMP := n
+CONFIG_PRIMA_WLAN_BTAMP ?= n
 
 #Flag to enable Legacy Fast Roaming(LFR)
-CONFIG_PRIMA_WLAN_LFR := y
+CONFIG_PRIMA_WLAN_LFR ?= y
 
 #JB kernel has PMKSA patches, hence enabling this flag
-CONFIG_PRIMA_WLAN_OKC := y
+CONFIG_PRIMA_WLAN_OKC ?= y
 
 # JB kernel has CPU enablement patches, so enable
-CONFIG_PRIMA_WLAN_11AC_HIGH_TP := y
+CONFIG_PRIMA_WLAN_11AC_HIGH_TP ?= y
 
 #Flag to enable TDLS feature
-CONFIG_QCOM_TDLS := y
+CONFIG_QCOM_TDLS ?= y
 
 #Flag to enable Fast Transition (11r) feature
-CONFIG_QCOM_VOWIFI_11R := y
+CONFIG_QCOM_VOWIFI_11R ?= y
 
 #Flag to enable Protected Managment Frames (11w) feature
 ifneq ($(CONFIG_PRONTO_WLAN),)
-CONFIG_WLAN_FEATURE_11W := y
+CONFIG_WLAN_FEATURE_11W ?= y
 endif
 
 #Flag to enable new Linux Regulatory implementation
-CONFIG_ENABLE_LINUX_REG := y
-CONFIG_QCOM_ESE := n
-CONFIG_QCOM_ESE_UPLOAD := n
+CONFIG_ENABLE_LINUX_REG ?= y
+CONFIG_QCOM_ESE ?= n
+CONFIG_QCOM_ESE_UPLOAD ?= n
 
 # Feature flags which are not (currently) configurable via Kconfig
 
@@ -496,10 +496,14 @@ WDI_OBJS :=	$(WDI_CP_OBJS) \
 		$(WDI_TRP_OBJS) \
 		$(WDI_WPAL_OBJS)
 
+WCNSS_SRC_DIR := wcnss
+WCNSS_OBJS :=	$(WCNSS_SRC_DIR)/wcnss_wlan.o \
+                $(WCNSS_SRC_DIR)/wcnss_prealloc.o \
+		$(WCNSS_SRC_DIR)/qcomwlan_secif.o
 
 RIVA_INC :=	-I$(WLAN_ROOT)/riva/inc
 
-LINUX_INC :=	-Iinclude/linux
+LINUX_INC :=	-Iinclude/linux -I$(WLAN_ROOT)/wcnss
 
 INCS :=		$(BAP_INC) \
 		$(DXE_INC) \
@@ -527,7 +531,8 @@ OBJS :=		$(BAP_OBJS) \
 		$(TL_OBJS) \
 		$(VOSS_OBJS) \
 		$(WDA_OBJS) \
-		$(WDI_OBJS)
+		$(WDI_OBJS) \
+		$(WCNSS_OBJS)
 
 EXTRA_CFLAGS += $(INCS)
 

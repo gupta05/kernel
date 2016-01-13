@@ -254,7 +254,8 @@ void wpalTrace( wpt_moduleid module, wpt_tracelevel level, char *strFormat, ... 
 
    // Print the trace message when the desired level bit is set in the module
    // tracel level mask.
-   if ( gTraceInfo[ module ].moduleTraceLevel & WPAL_TRACE_LEVEL_TO_MODULE_BITMASK( level ) )
+//   if ( gTraceInfo[ module ].moduleTraceLevel & WPAL_TRACE_LEVEL_TO_MODULE_BITMASK( level ) )
+   if (module == eWLAN_MODULE_DAL_CTRL)
    {
       va_list val;
       va_start(val, strFormat);

@@ -63,11 +63,8 @@
 #include <linux/irqreturn.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
-#ifdef EXISTS_MSM_SMSM
-#include <mach/msm_smsm.h>
-#else
-#include <soc/qcom/smsm.h>
-#endif
+#include <linux/wcnss_wlan.h>
+#include <soc/qcom/smem_state.h>
 #include "wlan_qct_pal_api.h"
 #include "wlan_qct_pal_device.h"
 #include "wlan_hdd_main.h"
@@ -808,7 +805,7 @@ wpt_status wpalNotifySmsm
 )
 {
    int rc;
-   rc = smsm_change_state(SMSM_APPS_STATE, clrSt, setSt);
+   rc = wcnss_change_smsm_state(SMSM_APPS_STATE, clrSt, setSt);
    if(0 != rc) 
    {
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,

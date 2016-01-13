@@ -77,6 +77,7 @@
 /*----------------------------------------------------------------------------
  * Include Files
  * -------------------------------------------------------------------------*/
+#include <linux/wcnss_wlan.h>
 #include "wlan_qct_wdi_cts.h"
 #include "wlan_qct_pal_msg.h"
 #include "wlan_qct_pal_api.h"
@@ -140,8 +141,6 @@ typedef struct
    WCTS_RxMsgCBType       wctsRxMsgCB;
    void*                  wctsRxMsgCBData;
    WCTS_StateType         wctsState;
-   smd_channel_t*         wctsChannel;
-   wpt_list               wctsPendingQueue;
    wpt_uint32             wctsMagic;
    wpt_msg                wctsOpenMsg;
    wpt_msg                wctsDataMsg;
@@ -271,14 +270,14 @@ WCTS_PALReadCallback
    /* iterate until no more packets are available */
    while (1) {
       /* check the length of the next packet */
-      packet_size = smd_cur_packet_size(pWCTSCb->wctsChannel);
+      packet_size = wcnss_smd_cur_packet_size();
       if (0 == packet_size) {
          /* No more data to be read */
          return;
       }
 
       /* Check how much of the data is available */
-      available = smd_read_avail(pWCTSCb->wctsChannel);
+      available = wcnss_smd_read_avail();
       if (available < packet_size) {
          /* Entire packet not yet ready to be read --
             There will be another notification when it is ready */
@@ -293,9 +292,7 @@ WCTS_PALReadCallback
          return;
       }
 
-      bytes_read = smd_read(pWCTSCb->wctsChannel,
-                            buffer,
-                            packet_size);
+      bytes_read = wcnss_smd_read(buffer, packet_size);
 
       if (bytes_read != packet_size) {
          /*Some problem, do not forward it to WDI.*/
@@ -320,99 +317,6 @@ WCTS_PALReadCallback
 } /*WCTS_PALReadCallback*/
 
 
-
-/**
- @brief    Callback function for serializing WCTS Write
-           processing in the control context
-
- @param    pWCTSCb  WCTS Control Block
-
- @see
- @return void
-*/
-static void
-WCTS_PALWriteCallback
-(
-   WCTS_ControlBlockType*  pWCTSCb
-)
-{
-   wpt_list_node*      pNode;
-   WCTS_BufferType*    pBufferQueue;
-   void*               pBuffer;
-   int                 len;
-   int                 available;
-   int                 written;
-
-   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
-   /*--------------------------------------------------------------------
-     Sanity check
-     --------------------------------------------------------------------*/
-   if ((NULL == pWCTSCb) || (WCTS_CB_MAGIC != pWCTSCb->wctsMagic)) {
-      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                 "WCTS_PALWriteCallback: Invalid parameter received.");
-      return;
-   }
-
-   /* if we are not deferred, then there are no pending packets */
-   if (WCTS_STATE_DEFERRED != pWCTSCb->wctsState) {
-      return;
-   }
-
-   /* Keep sending deferred messages as long as there is room in
-      the channel.  Note that we initially peek at the head of the
-      list to access the parameters for the next message; we don't
-      actually remove the next message from the deferred list until
-      we know the channel can handle it */
-   while (eWLAN_PAL_STATUS_SUCCESS ==
-          wpal_list_peek_front(&pWCTSCb->wctsPendingQueue, &pNode)) {
-      pBufferQueue = container_of(pNode, WCTS_BufferType, node);
-      pBuffer = pBufferQueue->pBuffer;
-      len = pBufferQueue->bufferSize;
-
-      available = smd_write_avail(pWCTSCb->wctsChannel);
-      if (available < len) {
-         /* channel has no room for the next packet so we are done */
-         return;
-      }
-
-      /* there is room for the next message, so we can now remove
-         it from the deferred message queue and send it */
-      wpal_list_remove_front(&pWCTSCb->wctsPendingQueue, &pNode);
-
-      /* note that pNode will be the same as when we peeked, so
-         there is no need to update pBuffer or len */
-
-      written = smd_write(pWCTSCb->wctsChannel, pBuffer, len);
-      if (written != len) {
-         /* Something went wrong */
-         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                    "WCTS_PALWriteCallback: channel write failure");
-
-         /* we were unable to send the message that was at the head
-            of the deferred list.  there is nothing else we can do
-            other than drop it, so we will just fall through to the
-            "success" processing.
-            hopefully the client can recover from this since there is
-            nothing else we can do here */
-      }
-
-      /* whether we had success or failure, reclaim all memory */
-      wpalMemoryZero(pBuffer, len);
-      wpalMemoryFree(pBuffer);
-      wpalMemoryFree(pBufferQueue);
-
-      /* we'll continue to iterate until the channel is full or all
-         of the deferred messages have been sent */
-   }
-
-   /* if we've exited the loop, then we have drained the deferred queue.
-      set the state to indicate we are no longer deferred, and turn off
-      the remote read interrupt */
-   pWCTSCb->wctsState = WCTS_STATE_OPEN;
-   smd_disable_read_intr(pWCTSCb->wctsChannel);
-
-} /*WCTS_PALWriteCallback*/
 
 
 
@@ -440,10 +344,6 @@ WCTS_PALDataCallback
 
    /* process any incoming messages */
    WCTS_PALReadCallback(pWCTSCb);
-
-   /* send any deferred messages */
-   WCTS_PALWriteCallback(pWCTSCb);
-
 } /*WCTS_PALDataCallback*/
 
 /**
@@ -462,9 +362,6 @@ WCTS_ClearPendingQueue
 )
 {
    WCTS_ControlBlockType* pWCTSCb = (WCTS_ControlBlockType*) wctsHandle;
-   wpt_list_node*      pNode = NULL;
-   WCTS_BufferType*    pBufferQueue = NULL;
-   void*               pBuffer = NULL;
 
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -474,14 +371,6 @@ WCTS_ClearPendingQueue
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
-   /*Free the buffers in the pending queue.*/
-   while (eWLAN_PAL_STATUS_SUCCESS ==
-          wpal_list_remove_front(&pWCTSCb->wctsPendingQueue, &pNode)) {
-      pBufferQueue = container_of(pNode, WCTS_BufferType, node);
-      pBuffer = pBufferQueue->pBuffer;
-      wpalMemoryFree(pBuffer);
-      wpalMemoryFree(pBufferQueue);
-   }
    return eWLAN_PAL_STATUS_SUCCESS;
 
 }/*WCTS_ClearPendingQueue*/
@@ -526,7 +415,7 @@ WCTS_NotifyCallback
 
    /* Serialize processing in the control thread */
    switch (event) {
-   case SMD_EVENT_OPEN:
+   case WCNSS_SMD_EVENT_OPEN:
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                  "%s: received SMD_EVENT_OPEN from SMD", __func__);
       /* If the prev state was 'remote closed' then it is a Riva 'restart',
@@ -544,7 +433,7 @@ WCTS_NotifyCallback
       palMsg = &pWCTSCb->wctsOpenMsg;
       break;
 
-   case SMD_EVENT_DATA:
+   case WCNSS_SMD_EVENT_DATA:
       if (WCTS_STATE_REM_CLOSED == pWCTSCb->wctsState)
       {
            WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -558,7 +447,7 @@ WCTS_NotifyCallback
       palMsg = &pWCTSCb->wctsDataMsg;
       break;
 
-   case SMD_EVENT_CLOSE:
+   case WCNSS_SMD_EVENT_CLOSE:
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                  "%s: received SMD_EVENT_CLOSE from SMD", __func__);
       /* SMD channel was closed from the remote side,
@@ -572,12 +461,12 @@ WCTS_NotifyCallback
       wpalDriverShutdown();
       return;
 
-   case SMD_EVENT_STATUS:
+   case WCNSS_SMD_EVENT_STATUS:
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                  "%s: received SMD_EVENT_STATUS from SMD", __func__);
       return;
 
-   case SMD_EVENT_REOPEN_READY:
+   case WCNSS_SMD_EVENT_REOPEN_READY:
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "%s: received SMD_EVENT_REOPEN_READY from SMD", __func__);
 
@@ -668,10 +557,6 @@ WCTS_OpenTransport
                WCTS_EVENT_OPEN,
                pWCTSCb->wctsNotifyCBData);
 
-       /* we initially don't want read interrupts
-         (we only want them if we get into deferred write mode) */
-       smd_disable_read_intr(pWCTSCb->wctsChannel);
-
        return (WCTS_HandleType)pWCTSCb;
    }
 
@@ -718,10 +603,8 @@ WCTS_OpenTransport
    pWCTSCb->wctsRxMsgCBData    = wctsCBs->wctsRxMsgCBData;
 
    /* initialize the remaining fields */
-   wpal_list_init(&pWCTSCb->wctsPendingQueue);
    pWCTSCb->wctsMagic   = WCTS_CB_MAGIC;
    pWCTSCb->wctsState   = WCTS_STATE_OPEN_PENDING;
-   pWCTSCb->wctsChannel = NULL;
 
    /* since SMD will callback in interrupt context, we will used
     * canned messages to serialize the SMD events into a thread
@@ -740,10 +623,7 @@ WCTS_OpenTransport
      ---------------------------------------------------------------------*/
 
    wpalEventReset(&pWCTSCb->wctsEvent);
-   smdstatus = smd_named_open_on_edge(szName,
-                                      SMD_APPS_WCNSS,
-                                      &pWCTSCb->wctsChannel,
-                                      pWCTSCb,
+   smdstatus = wcnss_smd_open_channel(pWCTSCb,
                                       WCTS_NotifyCallback);
    if (0 != smdstatus) {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -759,7 +639,7 @@ WCTS_OpenTransport
                  "%s: failed to receive SMD_EVENT_OPEN",
                  __func__);
       /* since we opened one end of the channel, close it */
-      smdstatus = smd_close(pWCTSCb->wctsChannel);
+      smdstatus = wcnss_smd_close();
       if (0 != smdstatus) {
          WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                     "%s: smd_close failed with status %d",
@@ -767,10 +647,6 @@ WCTS_OpenTransport
       }
       goto fail;
    }
-
-   /* we initially don't want read interrupts
-      (we only want them if we get into deferred write mode) */
-   smd_disable_read_intr(pWCTSCb->wctsChannel);
 
    /* we have successfully opened the SMD channel */
    gwctsHandle = pWCTSCb;
@@ -806,9 +682,6 @@ WCTS_CloseTransport
 )
 {
    WCTS_ControlBlockType* pWCTSCb = (WCTS_ControlBlockType*) wctsHandle;
-   wpt_list_node*      pNode = NULL;
-   WCTS_BufferType*    pBufferQueue = NULL;
-   void*               pBuffer = NULL;
    wpt_status          status;
    int                 smdstatus;
 
@@ -832,20 +705,11 @@ WCTS_CloseTransport
    return eWLAN_PAL_STATUS_SUCCESS;
 #endif /* FEATURE_R33D */
 
-   /*Free the buffers in the pending queue.*/
-   while (eWLAN_PAL_STATUS_SUCCESS ==
-          wpal_list_remove_front(&pWCTSCb->wctsPendingQueue, &pNode)) {
-      pBufferQueue = container_of(pNode, WCTS_BufferType, node);
-      pBuffer = pBufferQueue->pBuffer;
-      wpalMemoryFree(pBuffer);
-      wpalMemoryFree(pBufferQueue);
-   }
-
    /* Reset the state */
    pWCTSCb->wctsState = WCTS_STATE_CLOSED;
 
    wpalEventReset(&pWCTSCb->wctsEvent);
-   smdstatus = smd_close(pWCTSCb->wctsChannel);
+   smdstatus = wcnss_smd_close();
    if (0 != smdstatus) {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "%s: smd_close failed with status %d",
@@ -939,17 +803,12 @@ WCTS_SendMessage
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
+
    /* the SMD API uses int instead of uint, so change types here */
    len = (int)uLen;
 
    if (WCTS_STATE_OPEN == pWCTSCb->wctsState) {
-      available = smd_write_avail(pWCTSCb->wctsChannel);
-      if (available >= len) {
-         written = smd_write(pWCTSCb->wctsChannel, pMsg, len);
-      }
-   } else if (WCTS_STATE_DEFERRED == pWCTSCb->wctsState) {
-      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
-                 "WCTS_SendMessage: FIFO space not available, the packets will be queued");
+      written = wcnss_smd_write(pMsg, len);
    } else {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "WCTS_SendMessage: Channel in illegal state [%d].",
@@ -968,48 +827,6 @@ WCTS_SendMessage
       /* Message sent! No deferred state, free the buffer*/
       wpalMemoryZero(pMsg, len);
       wpalMemoryFree(pMsg);
-   } else {
-      /* This much data cannot be written at this time,
-         queue the rest of the data for later*/
-      pBufferQueue = wpalMemoryAllocate(sizeof(WCTS_BufferType));
-      if (NULL == pBufferQueue) {
-         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                    "WCTS_SendMessage: Cannot allocate memory for queuing the buffer");
-         wpalMemoryFree(pMsg);
-         WPAL_ASSERT(0);
-         return eWLAN_PAL_STATUS_E_NOMEM;
-      }
-
-      pBufferQueue->bufferSize = len;
-      pBufferQueue->pBuffer = pMsg;
-
-      if (eWLAN_PAL_STATUS_E_FAILURE ==
-             wpal_list_insert_back(&pWCTSCb->wctsPendingQueue,
-                 &pBufferQueue->node))
-      {
-         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                    "pBufferQueue wpal_list_insert_back failed");
-         wpalMemoryFree(pMsg);
-         wpalMemoryFree(pBufferQueue);
-         WPAL_ASSERT(0);
-         return eWLAN_PAL_STATUS_E_NOMEM;
-      }
-
-      /* if we are not already in the deferred state, then transition
-         to that state.  when we do so, we enable the remote read
-         interrupt so that we'll be notified when messages are read
-         from the remote end */
-      if (WCTS_STATE_DEFERRED != pWCTSCb->wctsState) {
-
-         /* Mark the state as deferred.
-            Later: We may need to protect wctsState by locks*/
-         pWCTSCb->wctsState = WCTS_STATE_DEFERRED;
-
-         smd_enable_read_intr(pWCTSCb->wctsChannel);
-      }
-
-      /*indicate to client that message was placed in deferred queue*/
-      return eWLAN_PAL_STATUS_E_RESOURCES;
    }
 
    return eWLAN_PAL_STATUS_SUCCESS;

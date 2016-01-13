@@ -52,10 +52,12 @@
 
 #include "dma-mapping.h"
 #include <linux/version.h>
+#if 0
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
 #include <soc/qcom/subsystem_restart.h>
 #else
 #include <mach/subsystem_restart.h>
+#endif
 #endif
 #include <linux/wcnss_wlan.h>
 
@@ -381,10 +383,12 @@ wpt_status wpalRivaSubystemRestart(void)
                  " SSR will be done at the end of unload", __func__);
          return eWLAN_PAL_STATUS_E_FAILURE;
     }
+#if 0
     if (0 == subsystem_restart("wcnss")) 
     {
         return eWLAN_PAL_STATUS_SUCCESS;
     }
+#endif
     return eWLAN_PAL_STATUS_E_FAILURE;
 }
 

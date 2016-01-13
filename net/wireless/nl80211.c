@@ -13339,6 +13339,7 @@ void nl80211_send_ap_stopped(struct wireless_dev *wdev)
  out:
 	nlmsg_free(msg);
 }
+EXPORT_SYMBOL(nl80211_send_ap_stopped);
 
 /* initialisation/exit functions */
 
