@@ -82,7 +82,7 @@
 #include "wniCfgAp.h"
 
 #ifdef FEATURE_WLAN_CH_AVOID
-#include "wcnss_wlan.h"
+#include <linux/wcnss_wlan.h>
 #endif /* FEATURE_WLAN_CH_AVOID */
 #include "wlan_hdd_trace.h"
 #include "vos_types.h"

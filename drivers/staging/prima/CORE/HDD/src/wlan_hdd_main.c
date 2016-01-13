@@ -103,10 +103,12 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #include "sapApi.h"
 #include <linux/semaphore.h>
 #include <linux/ctype.h>
+#if 0
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
 #include <soc/qcom/subsystem_restart.h>
 #else
 #include <mach/subsystem_restart.h>
+#endif
 #endif
 #include <wlan_hdd_hostapd.h>
 #include <wlan_hdd_softap_tx_rx.h>
@@ -153,10 +155,6 @@ static char *country_code;
 static int   enable_11d = -1;
 static int   enable_dfs_chan_scan = -1;
 static int   gbcnMissRate = -1;
-
-#ifndef MODULE
-static int wlan_hdd_inited;
-#endif
 
 /*
  * spinlock for synchronizing asynchronous request/response
@@ -2950,6 +2948,21 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            vos_mem_free(buf);
            buf = NULL;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+           {
+               struct cfg80211_mgmt_tx_params mgmt_tx_params = {
+                   .chan = &chan,
+                   .offchan = 0,
+                   .wait = dwellTime,
+                   .buf = finalBuf,
+                   .len = finalLen,
+                   .no_cck = 1,
+                   .dont_wait_for_ack = 1,
+               };
+
+               wlan_hdd_mgmt_tx(NULL, &pAdapter->wdev, &mgmt_tx_params, &cookie);
+           }
+#else
            wlan_hdd_mgmt_tx( NULL,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
                        &(pAdapter->wdev),
@@ -2962,6 +2975,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
 #endif
                        dwellTime, finalBuf, finalLen,  1,
                        1, &cookie );
+#endif
            vos_mem_free(finalBuf);
        }
        else if (strncmp(command, "GETROAMSCANCHANNELMINTIME", 25) == 0)
@@ -7268,7 +7282,7 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
 
                /* indicate disconnected event to nl80211 */
                cfg80211_disconnected(pAdapter->dev, WLAN_REASON_UNSPECIFIED,
-                                     NULL, 0, GFP_KERNEL); 
+                                     NULL, 0, true, GFP_KERNEL); 
             }
             else if (eConnectionState_Connecting == connState)
             {
@@ -8178,7 +8192,7 @@ free_hdd_ctx:
    if (hdd_is_ssr_required())
    {
        /* WDI timeout had happened during unload, so SSR is needed here */
-       subsystem_restart("wcnss");
+       // subsystem_restart("wcnss");
        msleep(5000);
    }
    hdd_set_ssr_required (VOS_FALSE);
@@ -9475,7 +9489,7 @@ err_free_hdd_context:
    if (hdd_is_ssr_required())
    {
        /* WDI timeout had happened during load, so SSR is needed here */
-       subsystem_restart("wcnss");
+       //subsystem_restart("wcnss");
        msleep(5000);
    }
    hdd_set_ssr_required (VOS_FALSE);
@@ -9499,7 +9513,7 @@ success:
   \return - 0 for success, non zero for failure
 
   --------------------------------------------------------------------------*/
-static int hdd_driver_init( void)
+int prima_driver_init( void)
 {
    VOS_STATUS status;
    v_CONTEXT_t pVosContext = NULL;
@@ -9640,31 +9654,6 @@ static int hdd_driver_init( void)
 
 /**---------------------------------------------------------------------------
 
-  \brief hdd_module_init() - Init Function
-
-   This is the driver entry point (invoked when module is loaded using insmod)
-
-  \param  - None
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-#ifdef MODULE
-static int __init hdd_module_init ( void)
-{
-   return hdd_driver_init();
-}
-#else /* #ifdef MODULE */
-static int __init hdd_module_init ( void)
-{
-   /* Driver initialization is delayed to fwpath_changed_handler */
-   return 0;
-}
-#endif /* #ifdef MODULE */
-
-
-/**---------------------------------------------------------------------------
-
   \brief hdd_driver_exit() - Exit function
 
   This is the driver exit point (invoked when module is unloaded using rmmod
@@ -9675,7 +9664,7 @@ static int __init hdd_module_init ( void)
   \return - None
 
   --------------------------------------------------------------------------*/
-static void hdd_driver_exit(void)
+void prima_driver_exit(void)
 {
    hdd_context_t *pHddCtx = NULL;
    v_CONTEXT_t pVosContext = NULL;
@@ -9772,23 +9761,6 @@ done:
    pr_info("%s: driver unloaded\n", WLAN_MODULE_NAME);
 }
 
-/**---------------------------------------------------------------------------
-
-  \brief hdd_module_exit() - Exit function
-
-  This is the driver exit point (invoked when module is unloaded using rmmod)
-
-  \param  - None
-
-  \return - None
-
-  --------------------------------------------------------------------------*/
-static void __exit hdd_module_exit(void)
-{
-   hdd_driver_exit();
-}
-
-#ifdef MODULE
 static int fwpath_changed_handler(const char *kmessage,
                                  struct kernel_param *kp)
 {
@@ -9800,82 +9772,6 @@ static int con_mode_handler(const char *kmessage,
 {
    return param_set_int(kmessage, kp);
 }
-#else /* #ifdef MODULE */
-/**---------------------------------------------------------------------------
-
-  \brief kickstart_driver
-
-   This is the driver entry point
-   - delayed driver initialization when driver is statically linked
-   - invoked when module parameter fwpath is modified from userspace to signal
-     initializing the WLAN driver or when con_mode is modified from userspace
-     to signal a switch in operating mode
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-static int kickstart_driver(void)
-{
-   int ret_status;
-
-   if (!wlan_hdd_inited) {
-      ret_status = hdd_driver_init();
-      wlan_hdd_inited = ret_status ? 0 : 1;
-      return ret_status;
-   }
-
-   hdd_driver_exit();
-
-   msleep(200);
-
-   ret_status = hdd_driver_init();
-   wlan_hdd_inited = ret_status ? 0 : 1;
-   return ret_status;
-}
-
-/**---------------------------------------------------------------------------
-
-  \brief fwpath_changed_handler() - Handler Function
-
-   Handle changes to the fwpath parameter
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-static int fwpath_changed_handler(const char *kmessage,
-                                  struct kernel_param *kp)
-{
-   int ret;
-
-   ret = param_set_copystring(kmessage, kp);
-   if (0 == ret)
-      ret = kickstart_driver();
-   return ret;
-}
-
-/**---------------------------------------------------------------------------
-
-  \brief con_mode_handler() -
-
-  Handler function for module param con_mode when it is changed by userspace
-  Dynamically linked - do nothing
-  Statically linked - exit and init driver, as in rmmod and insmod
-
-  \param  -
-
-  \return -
-
-  --------------------------------------------------------------------------*/
-static int con_mode_handler(const char *kmessage, struct kernel_param *kp)
-{
-   int ret;
-
-   ret = param_set_int(kmessage, kp);
-   if (0 == ret)
-      ret = kickstart_driver();
-   return ret;
-}
-#endif /* #ifdef MODULE */
 
 /**---------------------------------------------------------------------------
 
@@ -10558,9 +10454,6 @@ VOS_STATUS wlan_hdd_cancel_remain_on_channel(hdd_context_t *pHddCtx)
     }
     return VOS_STATUS_SUCCESS;
 }
-//Register the module init/exit functions
-module_init(hdd_module_init);
-module_exit(hdd_module_exit);
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Qualcomm Atheros, Inc.");

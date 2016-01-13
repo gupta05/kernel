@@ -265,7 +265,7 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb);
   @return         : Qdisc queue index
   ===========================================================================*/
 
-v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb);
+v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb, void *accel_priv, select_queue_fallback_t fallback);
 
 
 

@@ -47,10 +47,12 @@
 #include <linux/skbuff.h>
 #include <linux/etherdevice.h>
 #include <linux/ratelimit.h>
+#if 0
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
 #include <soc/qcom/subsystem_restart.h>
 #else
 #include <mach/subsystem_restart.h>
+#endif
 #endif
 
 #include <wlan_hdd_p2p.h>
@@ -568,7 +570,7 @@ int hdd_mon_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
       skb->protocol = htons(HDD_ETHERTYPE_802_1_X);
  
-      hdd_hostapd_select_queue(pPgBkAdapter->dev, skb);
+      hdd_hostapd_select_queue(pPgBkAdapter->dev, skb, NULL, NULL);
       return hdd_softap_hard_start_xmit( skb, pPgBkAdapter->dev );
    }
    else

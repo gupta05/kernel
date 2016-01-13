@@ -96,7 +96,11 @@
 #define WLAN_IS_TDLS_SETUP_ACTION(action) \
          ((SIR_MAC_TDLS_SETUP_REQ <= action) && (SIR_MAC_TDLS_SETUP_CNF >= action))
 #if !defined (TDLS_MGMT_VERSION2)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0))
+#define TDLS_MGMT_VERSION2 1
+#else
 #define TDLS_MGMT_VERSION2 0
+#endif
 #endif
 #endif
 

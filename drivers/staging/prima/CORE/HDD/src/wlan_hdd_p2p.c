@@ -1323,7 +1323,11 @@ err_rem_channel:
     return 0;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct wireless_dev *wdev,
+                     struct cfg80211_mgmt_tx_params *params,
+                     u64 *cookie )
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
 int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct wireless_dev *wdev,
                      struct ieee80211_channel *chan, bool offchan,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
@@ -1357,7 +1361,13 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
     int ret;
 
     vos_ssr_protect(__func__);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+    ret =  __wlan_hdd_mgmt_tx(wiphy, wdev,
+                              params->chan, params->offchan,
+                              params->wait,
+                              params->buf, params->len, params->no_cck,
+                              params->dont_wait_for_ack, cookie);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
     ret =  __wlan_hdd_mgmt_tx(wiphy, wdev,
                               chan, offchan,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
@@ -1866,7 +1876,13 @@ int __wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
 #endif
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0))
+struct wireless_dev* wlan_hdd_add_virtual_intf(
+                  struct wiphy *wiphy, const char *name,
+                  unsigned char name_assign_type,
+                  enum nl80211_iftype type,
+                  u32 *flags, struct vif_params *params )
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
 struct wireless_dev* wlan_hdd_add_virtual_intf(
                   struct wiphy *wiphy, const char *name,
                   enum nl80211_iftype type,
