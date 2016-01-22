@@ -98,6 +98,9 @@ struct wcnss_download_nv_resp {
 	u8 status;
 } __packed;
 
+/* XXX: Hack to inform prima driver of us being done */
+int wcnss_ctrl_done_loading_nv;
+
 /**
  * wcnss_ctrl_smd_callback() - handler from SMD responses
  * @qsdev:	smd device handle
@@ -225,6 +228,8 @@ static void wcnss_download_nv(struct work_struct *work)
 	else if (wcnss->ack_status != 1)
 		dev_err(wcnss->dev, "nv upload response failed err: %d\n",
 			wcnss->ack_status);
+
+	wcnss_ctrl_done_loading_nv = 1;
 
 release_fw:
 	release_firmware(fw);
