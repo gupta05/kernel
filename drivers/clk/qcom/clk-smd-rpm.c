@@ -294,8 +294,8 @@ DEFINE_CLK_SMD_RPM_XO_BUFFER_PINCTRL(msm8916, rf_clk1_pin, rf_clk1_a_pin, 4);
 DEFINE_CLK_SMD_RPM_XO_BUFFER_PINCTRL(msm8916, rf_clk2_pin, rf_clk2_a_pin, 5);
 
 static struct clk_smd_rpm *msm8916_clks[] = {
-	[RPM_XO_CLK_SRC]	= &msm8916_xo,
-	[RPM_XO_A_CLK_SRC]	= &msm8916_xo_a,
+//	[RPM_XO_CLK_SRC]	= &msm8916_xo,
+//	[RPM_XO_A_CLK_SRC]	= &msm8916_xo_a,
 	[RPM_PCNOC_CLK]		= &msm8916_pcnoc_clk,
 	[RPM_PCNOC_A_CLK]	= &msm8916_pcnoc_a_clk,
 	[RPM_SNOC_CLK]		= &msm8916_snoc_clk,
