@@ -215,15 +215,8 @@ static int rmi_i2c_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, rmi_i2c);
 
-	/*
-	 * Setting the page to zero will (a) make sure the PSR is in a
-	 * known state, and (b) make sure we can talk to the device.
-	 */
-	retval = rmi_set_page(rmi_i2c, 0);
-	if (retval) {
-		dev_err(&client->dev, "Failed to set page select to 0.\n");
-		return retval;
-	}
+	/* Invalidate current page to force rmi_set_page() on next access */
+	rmi_i2c->page = -1;
 
 	retval = rmi_register_transport_device(&rmi_i2c->xport);
 	if (retval) {

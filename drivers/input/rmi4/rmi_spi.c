@@ -410,15 +410,8 @@ static int rmi_spi_probe(struct spi_device *spi)
 	if (retval)
 		return retval;
 
-	/*
-	 * Setting the page to zero will (a) make sure the PSR is in a
-	 * known state, and (b) make sure we can talk to the device.
-	 */
-	retval = rmi_set_page(rmi_spi, 0);
-	if (retval) {
-		dev_err(&spi->dev, "Failed to set page select to 0.\n");
-		return retval;
-	}
+	/* Invalidate current page to force rmi_set_page() on next access */
+	rmi_spi->page = -1;
 
 	retval = rmi_register_transport_device(&rmi_spi->xport);
 	if (retval) {
