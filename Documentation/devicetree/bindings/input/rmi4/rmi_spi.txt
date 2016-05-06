@@ -22,6 +22,12 @@ See Documentation/devicetree/bindings/interrupt-controller/interrupts.txt
 - spi-rx-delay-us: microsecond delay after a read transfer.
 - spi-tx-delay-us: microsecond delay after a write transfer.
 
+- vdd-supply: VDD power supply.
+See Documentation/devicetree/bindings/regulator/regulator.txt
+
+- vio-supply: VIO power supply
+See Documentation/devicetree/bindings/regulator/regulator.txt
+
 Function Parameters:
 Parameters specific to RMI functions are contained in child nodes of the rmi device
  node. Documentation for the parameters of each function can be found in:

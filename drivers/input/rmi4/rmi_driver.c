@@ -24,6 +24,7 @@
 #include <linux/of.h>
 #include <uapi/linux/input.h>
 #include <linux/rmi.h>
+#include <linux/regulator/consumer.h>
 #include "rmi_bus.h"
 #include "rmi_driver.h"
 
@@ -875,6 +876,9 @@ static int rmi_driver_remove(struct device *dev)
 
 	rmi_free_function_list(rmi_dev);
 
+	regulator_bulk_disable(ARRAY_SIZE(rmi_dev->supplies),
+			       rmi_dev->supplies);
+
 	return 0;
 }
 
@@ -937,6 +941,22 @@ static int rmi_driver_probe(struct device *dev)
 	INIT_LIST_HEAD(&data->function_list);
 	data->rmi_dev = rmi_dev;
 	dev_set_drvdata(&rmi_dev->dev, data);
+
+	rmi_dev->supplies[0].supply = "vdd";
+	rmi_dev->supplies[1].supply = "vio";
+	retval = devm_regulator_bulk_get(rmi_dev->xport->dev,
+					 ARRAY_SIZE(rmi_dev->supplies),
+					 rmi_dev->supplies);
+	if (retval < 0)
+		return retval;
+
+	retval = regulator_bulk_enable(ARRAY_SIZE(rmi_dev->supplies),
+				       rmi_dev->supplies);
+	if (retval < 0)
+		return retval;
+
+	/* Allow the firmware to get ready */
+	msleep(10);
 
 	/*
 	 * Right before a warm boot, the sensor might be in some unusual state,

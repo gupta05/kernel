@@ -16,6 +16,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/types.h>
+#include <linux/regulator/consumer.h>
 
 #define NAME_BUFFER_SIZE 256
 
@@ -315,7 +316,7 @@ struct rmi_driver {
  * @number: Unique number for the device on the bus.
  * @driver: Pointer to associated driver
  * @xport: Pointer to the transport interface
- *
+ * @supplies: vdd and vdio regulator supplies
  */
 struct rmi_device {
 	struct device dev;
@@ -324,6 +325,7 @@ struct rmi_device {
 	struct rmi_driver *driver;
 	struct rmi_transport_dev *xport;
 
+	struct regulator_bulk_data supplies[2];
 };
 
 struct rmi_driver_data {
