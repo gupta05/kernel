@@ -466,11 +466,13 @@ static int rpm_smd_clk_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+#if 0
 	ret = clk_smd_rpm_enable_scaling(rpm);
 	if (ret) {
 		of_clk_del_provider(pdev->dev.of_node);
 		goto err;
 	}
+#endif
 
 	return 0;
 err:
